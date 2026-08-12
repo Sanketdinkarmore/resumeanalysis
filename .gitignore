@@ -14,10 +14,15 @@ out/
 coverage/
 *.tsbuildinfo
 
-# Env & secrets
+# Env & secrets — never commit real keys
 .env
 .env.*
 !.env.example
+*.pem
+*.p12
+*.key
+credentials.json
+serviceAccount*.json
 
 # OS / IDE
 .DS_Store
@@ -45,3 +50,6 @@ minio-data/
 # Test / tooling
 .turbo/
 .cache/
+
+# Local scratch / probe scripts
+apps/ai/_*.py

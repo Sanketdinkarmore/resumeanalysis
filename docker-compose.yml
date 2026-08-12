@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: jri-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: jri
+      POSTGRES_PASSWORD: jri
+      POSTGRES_DB: jri
+    ports:
+      - "5432:5432"
+    volumes:
+      - jri_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jri -d jri"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: jri-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - jri_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # MinIO (S3-compatible) — wired when we implement resume upload
+  minio:
+    image: minio/minio:latest
+    container_name: jri-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: jriminio
+      MINIO_ROOT_PASSWORD: jriminio123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - jri_minio_data:/data
+
+  ai:
+    build:
+      context: ./apps/ai
+      dockerfile: Dockerfile
+    container_name: jri-ai
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      ENV: development
+      PORT: 8000
+      INTERNAL_API_SECRET: local-dev-internal-secret-change-me
+
+volumes:
+  jri_pg_data:
+  jri_redis_data:
+  jri_minio_data:
