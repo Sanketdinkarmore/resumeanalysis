@@ -1,4 +1,5 @@
 from app.config import settings
+from app.services import gemini_client, groq_client
 from fastapi import APIRouter
 
 router = APIRouter()
@@ -9,5 +10,8 @@ def health_check():
     return {
         "status": "ok",
         "service": "ai",
-        "llm_configured": bool(settings.gemini_api_key),
+        "groq_configured": groq_client.is_groq_available(),
+        "gemini_configured": gemini_client.is_gemini_available(),
+        "llm_configured": groq_client.is_groq_available()
+        or gemini_client.is_gemini_available(),
     }

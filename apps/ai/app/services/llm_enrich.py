@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.services.gemini_client import generate_json, is_llm_available
+from app.services.llm_client import generate_json, is_llm_available
 
 
 def enrich_resume_parse(heuristic: dict[str, Any], full_text: str) -> dict[str, Any]:

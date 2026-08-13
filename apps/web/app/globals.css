@@ -1,0 +1,179 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-pos: var(--pos);
+  --color-neg: var(--neg);
+  --color-info: var(--info);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+
+  --font-sans: var(--font-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-editorial), ui-serif, Georgia, serif;
+  --font-mono: var(--font-mono-tech), ui-monospace, monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  color-scheme: light;
+  --radius: 0.5rem;
+
+  /* warm ivory / paper */
+  --paper: oklch(0.977 0.008 83);
+  --background: oklch(0.977 0.008 83);
+  --ink: oklch(0.19 0.006 55);
+  --ink-soft: oklch(0.44 0.008 60);
+  --ink-faint: oklch(0.62 0.008 65);
+  --foreground: var(--ink);
+
+  --line: oklch(0.87 0.01 75);
+  --line-soft: oklch(0.92 0.008 78);
+
+  /* restrained orange / amber accent */
+  --accent: oklch(0.67 0.17 47);
+  --accent-foreground: oklch(0.99 0.005 85);
+
+  /* semantic states */
+  --pos: oklch(0.58 0.1 155);
+  --neg: oklch(0.58 0.16 27);
+  --info: oklch(0.58 0.1 245);
+
+  --card: oklch(0.995 0.004 85);
+  --card-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: oklch(0.98 0.006 85);
+  --secondary: oklch(0.95 0.01 80);
+  --secondary-foreground: var(--ink);
+  --muted: oklch(0.95 0.01 80);
+  --muted-foreground: var(--ink-soft);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--accent);
+  --destructive: var(--neg);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: 'ss01', 'cv01';
+  }
+  ::selection {
+    background: var(--accent);
+    color: var(--accent-foreground);
+  }
+}
+
+@layer utilities {
+  .font-mono {
+    font-feature-settings: 'tnum', 'zero';
+    letter-spacing: -0.01em;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  .grain {
+    background-image: radial-gradient(
+      oklch(0.5 0.02 60 / 0.04) 0.5px,
+      transparent 0.5px
+    );
+    background-size: 4px 4px;
+  }
+}
+
+/* animations */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes draw {
+  from {
+    stroke-dashoffset: var(--dash, 200);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes count-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.reveal {
+  opacity: 0;
+}
+.reveal.in {
+  animation: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .reveal {
+    opacity: 1 !important;
+  }
+}

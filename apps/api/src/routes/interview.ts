@@ -123,6 +123,21 @@ interviewRouter.post("/", async (req, res, next) => {
 
       // Application implies the resume the recruiter would see
       resumeVersionId = resumeVersionId ?? application.resumeVersionId;
+
+      // Schema: one set per application (@unique). Re-generate = replace existing.
+      const existingForApp = await prisma.interviewQuestionSet.findUnique({
+        where: { applicationId: body.applicationId },
+        select: { id: true, userId: true },
+      });
+      if (existingForApp) {
+        if (existingForApp.userId !== userId) {
+          next(new AppError(404, "NOT_FOUND", "Application not found"));
+          return;
+        }
+        await prisma.interviewQuestionSet.delete({
+          where: { id: existingForApp.id },
+        });
+      }
     }
 
     let resumeContext: string | null = null;
@@ -218,6 +233,22 @@ interviewRouter.post("/", async (req, res, next) => {
       groundedInResume: Boolean(resumeContext),
     });
   } catch (err) {
+    // Race: two creates for same applicationId
+    if (
+      err &&
+      typeof err === "object" &&
+      "code" in err &&
+      (err as { code?: string }).code === "P2002"
+    ) {
+      next(
+        new AppError(
+          409,
+          "APPLICATION_SET_EXISTS",
+          "An interview set already exists for this application. Try again — it will replace the previous set.",
+        ),
+      );
+      return;
+    }
     next(err);
   }
 });
