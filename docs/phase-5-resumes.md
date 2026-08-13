@@ -7,7 +7,8 @@ This slice adds the first real resume-management backend flow from the PRD witho
 | Method | Path | Auth? | Purpose |
 |---|---|---|---|
 | GET | `/resumes` | Yes | List the current user's uploaded resumes |
-| POST | `/resumes` | Yes | Upload one PDF resume and create a `resume_versions` row |
+| GET | `/resumes/:id` | Yes | Detail + parsed data |
+| POST | `/resumes` | Yes | Upload one PDF resume (triggers AI parse) |
 
 ## What happens on upload
 
@@ -22,7 +23,11 @@ This slice adds the first real resume-management backend flow from the PRD witho
 5. `lib/storage.ts` ensures the MinIO bucket exists
 6. API uploads the PDF to MinIO
 7. API inserts a `resume_versions` row in Postgres
-8. Response returns metadata with `parseStatus: PENDING`
+8. Express calls FastAPI `POST /parse/resume` (sync for v1)
+9. Saves `parsed_resume_data`, sets `parseStatus` to `COMPLETED` or `FAILED`
+10. Response returns metadata (+ parse result path depending on route timing)
+
+**Status:** Done (upload + list + detail + parse). See also [phase-5-ai.md](./phase-5-ai.md).
 
 ## Environment variables
 

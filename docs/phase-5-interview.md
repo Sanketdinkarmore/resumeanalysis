@@ -2,17 +2,27 @@
 
 JD-grounded interview questions + on-demand answer outlines.
 
+**Status:** Done (API + AI + frontend)
+
 ## Architecture
 
 ```
 POST /interview-question-sets  (Express)
         ↓
-FastAPI POST /interview/questions  (Gemini)
+FastAPI POST /interview/questions
+        ↓
+LLM cascade: Groq → Gemini → template questions
         ↓
 Save InterviewQuestionSet + InterviewQuestion rows
 ```
 
-Answer outlines are **not** pre-generated (cost control). Request them per question.
+Answer outlines are **not** pre-generated (cost control). Request them per question:
+
+```
+POST …/questions/:questionId/answer-outline
+        ↓
+Groq → Gemini → template outline
+```
 
 ## Endpoints (Express)
 
@@ -30,21 +40,24 @@ Answer outlines are **not** pre-generated (cost control). Request them per quest
 | POST | `/interview/questions` | Generate TECHNICAL / BEHAVIORAL / PROJECT questions |
 | POST | `/interview/answer-outline` | Outline for one question |
 
-Requires `X-Internal-Secret` + `GEMINI_API_KEY`.
+Requires `X-Internal-Secret`. LLM keys optional but recommended:
 
-## Postman test
+- `GROQ_API_KEY` (preferred)
+- `GEMINI_API_KEY` (fallback)
+- If both fail → deterministic templates (feature still works)
 
-### Recommended: JD + resume (recruiter simulation)
+## Create body options
+
+### JD + resume
 
 ```json
-POST /interview-question-sets
 {
   "jobDescriptionId": "YOUR_JD_ID",
   "resumeVersionId": "YOUR_RESUME_ID"
 }
 ```
 
-Or via application (auto-uses that application's resume):
+### Via application (uses that application’s resume)
 
 ```json
 {
@@ -53,11 +66,9 @@ Or via application (auto-uses that application's resume):
 }
 ```
 
-Response includes `"groundedInResume": true` when resume context was used.
+**Important:** `applicationId` is **unique** on `interview_question_sets`. Generating again for the same application **deletes and replaces** the previous set.
 
-PROJECT questions should reference real resume projects (e.g. NASA APOD, Student Management System) framed against the JD.
-
-### JD-only (still supported)
+### JD-only
 
 ```json
 {
@@ -65,25 +76,26 @@ PROJECT questions should reference real resume projects (e.g. NASA APOD, Student
 }
 ```
 
-`"groundedInResume": false`
+Response includes `"groundedInResume": true|false`.
 
-### 2. Get set
+## Outline
 
-`GET http://localhost:4000/interview-question-sets/:id`
+`POST /interview-question-sets/:id/questions/:questionId/answer-outline`  
+Body: `{}`  
 
-### 3. Answer outline (one question)
+Calling again returns the stored outline (no second LLM charge).
 
-`POST http://localhost:4000/interview-question-sets/:id/questions/:questionId/answer-outline`
+## Frontend
 
-Body: empty JSON `{}`
-
-Calling again returns the stored outline (no second Gemini charge).
+- `/dashboard/interview` — generate form + list
+- `/dashboard/interview/[id]` — questions by category + **Generate outline** per question
 
 ## Verify in pgAdmin
 
-- `interview_question_sets` — status `COMPLETED`
-- `interview_questions` — rows with categories; `answerOutline` null until requested
+- `interview_question_sets` — status `COMPLETED` (or `FAILED` with `errorMessage`)
+- `interview_questions` — categories; `answerOutline` null until requested
 
-## Also fixed
+## Related
 
-PyMuPDF deprecation: `import fitz` → `import pymupdf`
+- AI cascade details: [phase-5-ai.md](./phase-5-ai.md)
+- Frontend: [phase-6-frontend.md](./phase-6-frontend.md)

@@ -1,135 +1,120 @@
-# Phase 5 — FastAPI AI Service (scaffold)
+# Phase 5 — FastAPI AI Service
 
-Internal Python service for parsing and LLM features. The browser never calls this directly — only Express does.
+Internal Python service for parsing and LLM features. The browser never calls this — only Express does.
 
-## Do I need a Gemini API key now?
+**Status:** Done (scaffold + parse + interview LLM cascade)
 
-**No.** Not for this scaffold slice.
+## Do I need API keys?
 
-| Slice | Gemini key needed? |
-|---|---|
-| Scaffold + health check | No |
-| Resume PDF text extraction | No (deterministic) |
-| JD skill/keyword extraction | Maybe (can start rule-based without LLM) |
-| Interview question generation | Yes |
-| Resume improvement suggestions | Yes |
+| Feature | Without keys | With keys |
+|---|---|---|
+| Health / scaffold | Works | — |
+| Resume PDF parse | Heuristic (PyMuPDF) | + LLM enrich (better) |
+| JD parse | Heuristic | + LLM enrich (better) |
+| Interview questions / outlines | Template fallback | Groq → Gemini (preferred) |
 
-When we need it, you'll add `GEMINI_API_KEY=...` to `apps/ai/.env`. Get one free at [Google AI Studio](https://aistudio.google.com/apikey).
+Keys live in `apps/ai/.env` (never commit):
+
+```env
+GROQ_API_KEY=          # preferred for interview (+ enrich cascade)
+GROQ_MODEL=llama-3.3-70b-versatile
+GEMINI_API_KEY=        # fallback
+GEMINI_MODEL=gemini-flash-latest
+INTERNAL_API_SECRET=   # must match Express
+```
+
+- Groq: https://console.groq.com/keys  
+- Gemini: https://aistudio.google.com/apikey  
 
 ## Project layout
 
 ```
 apps/ai/
   app/
-    main.py          # FastAPI app entry
-    config.py        # env vars (pydantic-settings)
+    main.py
+    config.py
     routes/
-      health.py      # GET /health
+      health.py
+      parse.py
+      interview.py
+    services/
+      resume_parser.py
+      jd_parser.py
+      llm_enrich.py
+      interview.py
+      llm_client.py      # Groq → Gemini
+      groq_client.py
+      gemini_client.py
+      json_utils.py
   requirements.txt
-  Dockerfile
   .env.example
 ```
 
-## Local setup (recommended for development)
+## Local setup
 
 ```powershell
 cd d:\resumeanalysis\apps\ai
-
-# one-time: create virtual environment
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-
-# install deps
 pip install -r requirements.txt
-
-# env file
 copy .env.example .env
-
-# run (from apps/ai, with venv active)
+# fill GROQ_API_KEY / GEMINI_API_KEY / INTERNAL_API_SECRET
 uvicorn app.main:app --reload --port 8000
 ```
 
 ## Verify
 
-- Health: http://localhost:8000/health
-- Swagger UI: http://localhost:8000/docs
+- Health: http://localhost:8000/health  
+- Docs: http://localhost:8000/docs  
 
-Expected health response:
+Example health:
 
 ```json
 {
   "status": "ok",
   "service": "ai",
-  "llm_configured": false
+  "groq_configured": true,
+  "gemini_configured": true,
+  "llm_configured": true
 }
 ```
 
-## Docker (optional)
+`GET /` returns **404** on purpose (no root page) — that is not an error.
 
-From repo root:
+## LLM cascade
 
-```powershell
-docker compose up -d ai
+`app/services/llm_client.py`:
+
+1. **Groq** (higher free RPM)  
+2. **Gemini** (fallback; retries on real rate limits)  
+3. Caller **heuristics / templates** (interview always returns something)
+
+Used by:
+
+- Interview questions + answer outlines  
+- Resume/JD enrichment (`llm_enrich.py`)
+
+## Internal routes
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/health` | Liveness + LLM flags |
+| POST | `/parse/resume` | PDF bytes → structured resume |
+| POST | `/parse/job-description` | `{ rawText }` → skills/keywords |
+| POST | `/interview/questions` | JD (+ optional resume) → questions |
+| POST | `/interview/answer-outline` | One question → outline |
+
+All non-health routes require header `X-Internal-Secret`.
+
+## Architecture fit
+
 ```
-
-Same health URL: http://localhost:8000/health
-
-## How this fits the architecture
-
-```
-Browser → Express (port 4000) → FastAPI (port 8000)
+Browser → Express (:4000) → FastAPI (:8000)
                 ↓
-           PostgreSQL / MinIO
+         PostgreSQL / MinIO
 ```
 
-Express will call FastAPI with `INTERNAL_API_SECRET` header once we wire parsing (next slices).
+## Related
 
-## Next slices (in order)
-
-1. ~~Resume PDF text extraction (no LLM)~~ Done (+ skill cleanup v2)
-2. ~~JD entity extraction~~ Done
-3. ~~Express calls FastAPI after upload~~ Done (sync for v1)
-4. Interview question generation (Gemini) — Done
-5. Express interview prep routes — Done
-
-## Interview prep
-
-See `docs/phase-5-interview.md`.
-
-FastAPI routes:
-- `POST /interview/questions`
-- `POST /interview/answer-outline`
-
-Also: PyMuPDF import fixed (`import pymupdf` instead of deprecated `fitz`).
-
-## Resume parsing slice (done)
-
-- `POST /parse/resume` on FastAPI (internal, requires `X-Internal-Secret` header)
-- PyMuPDF text extraction + heuristic section parsing
-- Optional **Gemini enrichment** when `GEMINI_API_KEY` is set (same API schema)
-- If Gemini fails → heuristic result is returned unchanged (no breakage)
-- Express calls FastAPI after `POST /resumes` upload
-- Saves `parsed_resume_data`, sets `parseStatus` to `COMPLETED` or `FAILED`
-- `GET /resumes/:id` returns parsed data
-- Check `parsedData.rawExtract.llmEnriched` / `parser` to see which path ran
-
-## JD parsing slice (done)
-
-- `POST /parse/job-description` on FastAPI (JSON `{ "rawText": "..." }`)
-- Heuristic skill/keyword/seniority extraction + optional Gemini enrichment
-- Express auto-parses on `POST /job-descriptions` and re-parses on `PATCH` when `rawText` changes
-- `GET /job-descriptions/:id` returns `parsedData`
-
-### Gemini note
-
-- Default model: `gemini-flash-latest` (older model IDs like `gemini-2.0-flash` are deprecated)
-- Key goes in `apps/ai/.env` as `GEMINI_API_KEY=...`
-- Health: http://localhost:8000/health → `"llm_configured": true`
-
-### Test flow
-
-1. Restart FastAPI so it picks up the new Gemini code + env
-2. Run **both** services (Express + FastAPI)
-3. Re-upload your resume PDF → cleaner skills, better experience grouping, summary filled
-4. Create a new JD via Postman → `llmEnriched: true` in parsed rawExtract when Gemini works
-5. Run match analysis on the new resume + new JD
+- Interview Express + UI: [phase-5-interview.md](./phase-5-interview.md)
+- Backend overview: [phase-5-backend.md](./phase-5-backend.md)
