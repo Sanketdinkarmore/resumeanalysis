@@ -24,6 +24,7 @@ const envSchema = z.object({
     .transform((value) => value.toLowerCase() === "true"),
   AI_SERVICE_URL: z.string().url().default("http://localhost:8000"),
   INTERNAL_API_SECRET: z.string().min(16),
+  REDIS_URL: z.string().default("redis://127.0.0.1:6379"),
 });
 
 export const env = envSchema.parse(process.env);

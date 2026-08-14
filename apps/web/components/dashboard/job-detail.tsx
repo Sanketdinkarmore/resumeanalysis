@@ -6,6 +6,13 @@ import { useParams } from 'next/navigation'
 import { ApiError, deleteJob, getJob, mapApiError, type JobDetail } from '@/lib/api'
 import { Chip } from '@/components/primitives'
 import { DeleteResourceSection } from '@/components/dashboard/delete-resource-section'
+import {
+  ParseProgressBanner,
+  ParsedFieldsSkeleton,
+  parseEmptyHint,
+} from '@/components/dashboard/parse-progress-banner'
+import { isParseInProgress, parseStatusLabel } from '@/lib/parse-status'
+import { useParseDetailPolling } from '@/lib/use-parse-polling'
 import { cn } from '@/lib/utils'
 
 function statusTone(status: JobDetail['parseStatus']) {
@@ -21,14 +28,24 @@ function statusTone(status: JobDetail['parseStatus']) {
   }
 }
 
-function SkillGroup({ label, items }: { label: string; items: string[] }) {
+function SkillGroup({
+  label,
+  items,
+  parseStatus,
+}: {
+  label: string
+  items: string[]
+  parseStatus: JobDetail['parseStatus']
+}) {
   return (
     <section className="mt-8">
       <p className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-ink-faint">
         {label}
       </p>
       {items.length === 0 ? (
-        <p className="mt-3 text-[13px] text-ink-soft">None extracted.</p>
+        <p className="mt-3 text-[13px] text-ink-soft">
+          {parseEmptyHint(parseStatus, 'None extracted.')}
+        </p>
       ) : (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {items.map((s) => (
@@ -56,12 +73,15 @@ export function JobDetailView() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (opts?: { quiet?: boolean }) => {
     if (!id) return
-    setLoading(true)
-    setError(null)
+    if (!opts?.quiet) {
+      setLoading(true)
+      setError(null)
+    }
     try {
       setJob(await getJob(id))
+      setError(null)
     } catch (err) {
       setJob(null)
       if (err instanceof ApiError) {
@@ -70,13 +90,15 @@ export function JobDetailView() {
         setError('Could not load this job.')
       }
     } finally {
-      setLoading(false)
+      if (!opts?.quiet) setLoading(false)
     }
   }, [id])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  useParseDetailPolling(job?.parseStatus, load)
 
   if (loading) {
     return (
@@ -103,6 +125,7 @@ export function JobDetailView() {
   }
 
   const parsed = job.parsedData
+  const parsing = isParseInProgress(job.parseStatus)
   const required = (parsed?.requiredSkills ?? []).map(String)
   const preferred = (parsed?.preferredSkills ?? []).map(String)
   const keywords = (parsed?.keywords ?? []).map(String)
@@ -133,8 +156,10 @@ export function JobDetailView() {
             </a>
           )}
         </div>
-        <Chip tone={statusTone(job.parseStatus)}>{job.parseStatus}</Chip>
+        <Chip tone={statusTone(job.parseStatus)}>{parseStatusLabel(job.parseStatus)}</Chip>
       </div>
+
+      <ParseProgressBanner status={job.parseStatus} />
 
       {job.parseError && (
         <p className="mt-6 rounded-lg border border-neg/25 bg-neg/[0.04] px-4 py-3 text-[13px] text-neg">
@@ -142,15 +167,21 @@ export function JobDetailView() {
         </p>
       )}
 
-      {parsed?.seniority && parsed.seniority !== 'unknown' && (
+      {!parsing && parsed?.seniority && parsed.seniority !== 'unknown' && (
         <p className="mt-6 font-mono text-[12px] text-ink-soft">
           Seniority · <span className="text-ink">{parsed.seniority}</span>
         </p>
       )}
 
-      <SkillGroup label="Required skills" items={required} />
-      <SkillGroup label="Preferred skills" items={preferred} />
-      <SkillGroup label="Keywords" items={keywords} />
+      {parsing ? (
+        <ParsedFieldsSkeleton rows={3} />
+      ) : (
+        <>
+          <SkillGroup label="Required skills" items={required} parseStatus={job.parseStatus} />
+          <SkillGroup label="Preferred skills" items={preferred} parseStatus={job.parseStatus} />
+          <SkillGroup label="Keywords" items={keywords} parseStatus={job.parseStatus} />
+        </>
+      )}
 
       <section className="mt-8">
         <p className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-ink-faint">

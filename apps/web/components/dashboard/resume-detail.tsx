@@ -14,6 +14,9 @@ import {
 } from '@/lib/api'
 import { Chip } from '@/components/primitives'
 import { DeleteResourceSection } from '@/components/dashboard/delete-resource-section'
+import { ParseProgressBanner, ParsedFieldsSkeleton } from '@/components/dashboard/parse-progress-banner'
+import { isParseInProgress, parseStatusLabel } from '@/lib/parse-status'
+import { useParseDetailPolling } from '@/lib/use-parse-polling'
 import { cn } from '@/lib/utils'
 
 function statusTone(status: ResumeDetail['parseStatus']) {
@@ -118,12 +121,15 @@ export function ResumeDetailView() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (opts?: { quiet?: boolean }) => {
     if (!id) return
-    setLoading(true)
-    setError(null)
+    if (!opts?.quiet) {
+      setLoading(true)
+      setError(null)
+    }
     try {
       setResume(await getResume(id))
+      setError(null)
     } catch (err) {
       setResume(null)
       if (err instanceof ApiError) {
@@ -132,13 +138,15 @@ export function ResumeDetailView() {
         setError('Could not load this resume.')
       }
     } finally {
-      setLoading(false)
+      if (!opts?.quiet) setLoading(false)
     }
   }, [id])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  useParseDetailPolling(resume?.parseStatus, load)
 
   if (loading) {
     return (
@@ -172,6 +180,7 @@ export function ResumeDetailView() {
   const projects = asTextItems(resume.parsedData?.projects ?? [])
   const certifications = asTextItems(resume.parsedData?.certifications ?? [])
   const afterParse = resume.parseStatus === 'COMPLETED'
+  const parsing = isParseInProgress(resume.parseStatus)
 
   return (
     <div>
@@ -191,8 +200,10 @@ export function ResumeDetailView() {
             {resume.originalFilename}
           </p>
         </div>
-        <Chip tone={statusTone(resume.parseStatus)}>{resume.parseStatus}</Chip>
+        <Chip tone={statusTone(resume.parseStatus)}>{parseStatusLabel(resume.parseStatus)}</Chip>
       </div>
+
+      <ParseProgressBanner status={resume.parseStatus} />
 
       {resume.parseError && (
         <p className="mt-6 rounded-lg border border-neg/25 bg-neg/[0.04] px-4 py-3 text-[13px] text-neg">
@@ -200,93 +211,99 @@ export function ResumeDetailView() {
         </p>
       )}
 
-      {summary && (
-        <section className="mt-10">
-          <p className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-ink-faint">
-            Summary
-          </p>
-          <p className="mt-3 text-[15px] leading-relaxed text-ink-soft">{summary}</p>
-        </section>
-      )}
+      {parsing ? (
+        <ParsedFieldsSkeleton rows={4} />
+      ) : (
+        <>
+          {summary && (
+            <section className="mt-10">
+              <p className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-ink-faint">
+                Summary
+              </p>
+              <p className="mt-3 text-[15px] leading-relaxed text-ink-soft">{summary}</p>
+            </section>
+          )}
 
-      {contact && Object.keys(contact).length > 0 && (
-        <section className="mt-8">
-          <p className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-ink-faint">
-            Contact
-          </p>
-          <dl className="mt-3 grid gap-2 sm:grid-cols-2">
-            {Object.entries(contact).map(([k, v]) => (
-              <div
-                key={k}
-                className="rounded-lg border border-line-soft bg-paper/50 px-3 py-2.5"
-              >
-                <dt className="font-mono text-[10px] uppercase tracking-wider text-ink-faint">
-                  {k}
-                </dt>
-                <dd className="mt-0.5 truncate text-[13px] text-ink">{String(v ?? '—')}</dd>
+          {contact && Object.keys(contact).length > 0 && (
+            <section className="mt-8">
+              <p className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-ink-faint">
+                Contact
+              </p>
+              <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+                {Object.entries(contact).map(([k, v]) => (
+                  <div
+                    key={k}
+                    className="rounded-lg border border-line-soft bg-paper/50 px-3 py-2.5"
+                  >
+                    <dt className="font-mono text-[10px] uppercase tracking-wider text-ink-faint">
+                      {k}
+                    </dt>
+                    <dd className="mt-0.5 truncate text-[13px] text-ink">{String(v ?? '—')}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          )}
+
+          <section className="mt-8">
+            <p className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-ink-faint">
+              Skills
+            </p>
+            {skills.length === 0 ? (
+              <p className="mt-3 text-[13px] text-ink-soft">
+                {afterParse ? 'No skills extracted.' : 'Skills appear after a successful parse.'}
+              </p>
+            ) : (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {skills.map((s) => (
+                  <span
+                    key={s}
+                    className={cn(
+                      'inline-flex rounded border border-line bg-card px-2 py-1',
+                      'font-mono text-[11px] text-ink-soft',
+                    )}
+                  >
+                    {s}
+                  </span>
+                ))}
               </div>
-            ))}
-          </dl>
-        </section>
+            )}
+          </section>
+
+          <section className="mt-8">
+            <p className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-ink-faint">
+              Experience
+            </p>
+            {experience.length === 0 ? (
+              <p className="mt-3 text-[13px] text-ink-soft">
+                {afterParse ? 'No experience extracted.' : 'Experience appears after a successful parse.'}
+              </p>
+            ) : (
+              <div className="mt-3 flex flex-col gap-3">
+                {experience.map((item, i) => (
+                  <ExperienceBlock key={`${item.title}-${item.company}-${i}`} item={item} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <TextListSection
+            label="Education"
+            items={education}
+            emptyHint={afterParse ? 'No education extracted.' : 'Education appears after a successful parse.'}
+          />
+          <TextListSection
+            label="Projects"
+            items={projects}
+            emptyHint={afterParse ? 'No projects extracted.' : 'Projects appear after a successful parse.'}
+          />
+          <TextListSection
+            label="Certifications"
+            items={certifications}
+            emptyHint={afterParse ? 'No certifications extracted.' : 'Certifications appear after a successful parse.'}
+          />
+        </>
       )}
-
-      <section className="mt-8">
-        <p className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-ink-faint">
-          Skills
-        </p>
-        {skills.length === 0 ? (
-          <p className="mt-3 text-[13px] text-ink-soft">
-            {afterParse ? 'No skills extracted.' : 'Skills appear after a successful parse.'}
-          </p>
-        ) : (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {skills.map((s) => (
-              <span
-                key={s}
-                className={cn(
-                  'inline-flex rounded border border-line bg-card px-2 py-1',
-                  'font-mono text-[11px] text-ink-soft',
-                )}
-              >
-                {s}
-              </span>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="mt-8">
-        <p className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-ink-faint">
-          Experience
-        </p>
-        {experience.length === 0 ? (
-          <p className="mt-3 text-[13px] text-ink-soft">
-            {afterParse ? 'No experience extracted.' : 'Experience appears after a successful parse.'}
-          </p>
-        ) : (
-          <div className="mt-3 flex flex-col gap-3">
-            {experience.map((item, i) => (
-              <ExperienceBlock key={`${item.title}-${item.company}-${i}`} item={item} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <TextListSection
-        label="Education"
-        items={education}
-        emptyHint={afterParse ? 'No education extracted.' : 'Education appears after a successful parse.'}
-      />
-      <TextListSection
-        label="Projects"
-        items={projects}
-        emptyHint={afterParse ? 'No projects extracted.' : 'Projects appear after a successful parse.'}
-      />
-      <TextListSection
-        label="Certifications"
-        items={certifications}
-        emptyHint={afterParse ? 'No certifications extracted.' : 'Certifications appear after a successful parse.'}
-      />
 
       <DeleteResourceSection
         description="Hide this resume from your library. You cannot delete resumes linked to match analyses or applications."

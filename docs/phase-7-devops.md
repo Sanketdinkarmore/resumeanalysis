@@ -12,7 +12,7 @@ Move from “works on my machine” to **repeatable builds**, **containerized se
 |---|---|---|
 | **7.1** | GitHub Actions CI (typecheck, tests, builds) | **Done** |
 | **7.2** | Dockerfiles for `api` + `web`; extend `docker-compose.yml` | **Done** |
-| **7.3** | Redis + BullMQ worker — async resume/job parse | Not started |
+| **7.3** | Redis + BullMQ worker — async resume/job parse | **Done** |
 | **7.4** | Async match + interview generation (optional) | Not started |
 | **7.5** | Deploy docs (AWS / single VPS) | Not started |
 
@@ -82,17 +82,38 @@ docker build -t jri-web:local --build-arg NEXT_PUBLIC_API_URL=http://localhost:4
 docker build -t jri-ai:local ./apps/ai
 ```
 
-## 7.3 — Redis queues (next)
+## 7.3 — Redis parse queue
 
-Today parsing runs **inline** in API request handlers (see comment in `apps/api/src/routes/resumes.ts`).
+Resume and job parsing run in a **background worker** (BullMQ + Redis), not in the HTTP request.
 
-Planned change:
+| Component | Path |
+|---|---|
+| Queue helpers | `apps/api/src/lib/queue.ts` |
+| Parse logic | `apps/api/src/lib/parseService.ts` |
+| Worker entry | `apps/api/src/worker.ts` |
 
-1. API enqueues job → Redis (BullMQ)
-2. Worker process picks up job → calls AI service → updates Prisma
-3. Web already polls `PENDING` / `PROCESSING` — no UI change needed
+Flow:
 
-Env: `REDIS_URL=redis://localhost:6379` (already available via compose).
+1. API upload/create → status `PROCESSING` → job enqueued
+2. Worker pulls job → calls AI service → writes parsed data → `COMPLETED` or `FAILED`
+3. Web lists already poll every 4s while parsing — no UI change
+
+**Local dev (npm on host):**
+
+```bash
+docker compose up -d          # postgres, redis, minio, ai
+cd apps/api && npm run dev    # terminal 1 — API
+cd apps/api && npm run worker:dev   # terminal 2 — worker (required for parsing!)
+```
+
+**Docker full stack:**
+
+```bash
+docker compose --profile app up -d --build
+# includes jri-worker container
+```
+
+Env: `REDIS_URL=redis://localhost:6379` (compose uses `redis://redis:6379` inside containers).
 
 ## Related docs
 

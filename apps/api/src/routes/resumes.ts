@@ -1,10 +1,9 @@
 import { JobStatus } from "@prisma/client";
-import type { Prisma } from "@prisma/client";
 import multer from "multer";
 import { Router } from "express";
-import { parseResumePdf } from "../lib/aiClient.js";
-import { prisma } from "../lib/prisma.js";
 import { uploadResumePdf } from "../lib/storage.js";
+import { enqueueResumeParse } from "../lib/queue.js";
+import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
 import { requireAuth, type AuthedRequest } from "../middleware/requireAuth.js";
 
@@ -145,40 +144,12 @@ resumesRouter.post("/", (req, res, next) => {
         },
       });
 
-      // Trigger parse (sync for v1 — background queue comes in Phase 7)
       await prisma.resumeVersion.update({
         where: { id: resume.id },
         data: { parseStatus: JobStatus.PROCESSING },
       });
 
-      try {
-        const parsed = await parseResumePdf(file.buffer, file.originalname);
-
-        await prisma.parsedResumeData.create({
-          data: {
-            resumeVersionId: resume.id,
-            contact: parsed.contact as Prisma.InputJsonValue,
-            summary: parsed.summary,
-            skills: parsed.skills as Prisma.InputJsonValue,
-            experience: parsed.experience as Prisma.InputJsonValue,
-            education: parsed.education as Prisma.InputJsonValue,
-            projects: parsed.projects as Prisma.InputJsonValue,
-            certifications: parsed.certifications as Prisma.InputJsonValue,
-            rawExtract: parsed.rawExtract as Prisma.InputJsonValue,
-          },
-        });
-
-        await prisma.resumeVersion.update({
-          where: { id: resume.id },
-          data: { parseStatus: JobStatus.COMPLETED, parseError: null },
-        });
-      } catch (parseErr) {
-        const message = parseErr instanceof Error ? parseErr.message : "Parse failed";
-        await prisma.resumeVersion.update({
-          where: { id: resume.id },
-          data: { parseStatus: JobStatus.FAILED, parseError: message },
-        });
-      }
+      await enqueueResumeParse(resume.id);
 
       const result = await prisma.resumeVersion.findUnique({
         where: { id: resume.id },

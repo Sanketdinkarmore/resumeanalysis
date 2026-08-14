@@ -45,8 +45,8 @@ docs/      → PRD, architecture, phase notes
 - **Phase 5 (backend + AI):** complete  
 - **Phase 6 (frontend core):** complete  
 - **Phase 7 (DevOps):** in progress — [docs/phase-7-devops.md](./docs/phase-7-devops.md)  
-  - **7.1 CI** ✅ · **7.2 Docker** ✅  
-  - **Next:** Redis + BullMQ async parse (7.3)  
+  - **7.1 CI** ✅ · **7.2 Docker** ✅ · **7.3 Redis parse queue** ✅  
+  - **Next:** optional async match/interview (7.4) or deploy docs (7.5)  
 
 ## Local infra
 

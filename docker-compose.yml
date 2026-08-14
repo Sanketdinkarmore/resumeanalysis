@@ -88,10 +88,13 @@ services:
       S3_FORCE_PATH_STYLE: "true"
       AI_SERVICE_URL: http://ai:8000
       INTERNAL_API_SECRET: local-dev-internal-secret-change-me
+      REDIS_URL: redis://redis:6379
       # Host port mapping — browser OAuth callback stays on localhost:4000
       GOOGLE_REDIRECT_URI: http://localhost:4000/auth/google/callback
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       minio:
         condition: service_started
@@ -128,6 +131,40 @@ services:
     depends_on:
       api:
         condition: service_healthy
+
+  worker:
+    profiles: ["app"]
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: jri-worker
+    restart: unless-stopped
+    command: ["node", "dist/worker.js"]
+    env_file:
+      - ./apps/api/.env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://jri:jri@postgres:5432/jri?schema=public
+      JWT_ACCESS_SECRET: local-dev-access-secret-change-me
+      JWT_REFRESH_SECRET: local-dev-refresh-secret-change-me
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY_ID: jriminio
+      S3_SECRET_ACCESS_KEY: jriminio123
+      S3_BUCKET: resumes
+      S3_FORCE_PATH_STYLE: "true"
+      AI_SERVICE_URL: http://ai:8000
+      INTERNAL_API_SECRET: local-dev-internal-secret-change-me
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      ai:
+        condition: service_started
 
 volumes:
   jri_pg_data:

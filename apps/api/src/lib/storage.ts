@@ -1,5 +1,6 @@
 import {
   CreateBucketCommand,
+  GetObjectCommand,
   HeadBucketCommand,
   PutObjectCommand,
   S3Client,
@@ -53,6 +54,22 @@ export async function uploadResumePdf(params: {
   );
 
   return { objectKey };
+}
+
+export async function downloadResumePdf(objectKey: string): Promise<Buffer> {
+  const res = await storage.send(
+    new GetObjectCommand({
+      Bucket: env.S3_BUCKET,
+      Key: objectKey,
+    }),
+  );
+
+  const bytes = await res.Body?.transformToByteArray();
+  if (!bytes?.length) {
+    throw new Error("Resume file is empty or missing in storage");
+  }
+
+  return Buffer.from(bytes);
 }
 
 function sanitizeFilename(filename: string) {

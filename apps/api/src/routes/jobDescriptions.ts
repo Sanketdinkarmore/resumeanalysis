@@ -1,7 +1,6 @@
 import { JobStatus } from "@prisma/client";
-import type { Prisma } from "@prisma/client";
 import { Router } from "express";
-import { parseJobDescription } from "../lib/aiClient.js";
+import { enqueueJobDescriptionParse } from "../lib/queue.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
 import { requireAuth, type AuthedRequest } from "../middleware/requireAuth.js";
@@ -36,33 +35,7 @@ jobDescriptionsRouter.post("/", async (req, res, next) => {
       data: { parseStatus: JobStatus.PROCESSING },
     });
 
-    try {
-      const parsed = await parseJobDescription(body.rawText);
-
-      await prisma.parsedJobDescription.create({
-        data: {
-          jobDescriptionId: jd.id,
-          requiredSkills: parsed.requiredSkills as Prisma.InputJsonValue,
-          preferredSkills: parsed.preferredSkills as Prisma.InputJsonValue,
-          responsibilities: parsed.responsibilities as Prisma.InputJsonValue,
-          qualifications: parsed.qualifications as Prisma.InputJsonValue,
-          seniority: parsed.seniority,
-          keywords: parsed.keywords as Prisma.InputJsonValue,
-          rawExtract: parsed.rawExtract as Prisma.InputJsonValue,
-        },
-      });
-
-      await prisma.jobDescription.update({
-        where: { id: jd.id },
-        data: { parseStatus: JobStatus.COMPLETED, parseError: null },
-      });
-    } catch (parseErr) {
-      const message = parseErr instanceof Error ? parseErr.message : "Parse failed";
-      await prisma.jobDescription.update({
-        where: { id: jd.id },
-        data: { parseStatus: JobStatus.FAILED, parseError: message },
-      });
-    }
+    await enqueueJobDescriptionParse(jd.id);
 
     const result = await prisma.jobDescription.findUnique({
       where: { id: jd.id },
@@ -192,43 +165,7 @@ jobDescriptionsRouter.patch("/:id", async (req, res, next) => {
         data: { parseStatus: JobStatus.PROCESSING, parseError: null },
       });
 
-      try {
-        const parsed = await parseJobDescription(body.rawText);
-
-        await prisma.parsedJobDescription.upsert({
-          where: { jobDescriptionId: req.params.id },
-          create: {
-            jobDescriptionId: req.params.id,
-            requiredSkills: parsed.requiredSkills as Prisma.InputJsonValue,
-            preferredSkills: parsed.preferredSkills as Prisma.InputJsonValue,
-            responsibilities: parsed.responsibilities as Prisma.InputJsonValue,
-            qualifications: parsed.qualifications as Prisma.InputJsonValue,
-            seniority: parsed.seniority,
-            keywords: parsed.keywords as Prisma.InputJsonValue,
-            rawExtract: parsed.rawExtract as Prisma.InputJsonValue,
-          },
-          update: {
-            requiredSkills: parsed.requiredSkills as Prisma.InputJsonValue,
-            preferredSkills: parsed.preferredSkills as Prisma.InputJsonValue,
-            responsibilities: parsed.responsibilities as Prisma.InputJsonValue,
-            qualifications: parsed.qualifications as Prisma.InputJsonValue,
-            seniority: parsed.seniority,
-            keywords: parsed.keywords as Prisma.InputJsonValue,
-            rawExtract: parsed.rawExtract as Prisma.InputJsonValue,
-          },
-        });
-
-        await prisma.jobDescription.update({
-          where: { id: req.params.id },
-          data: { parseStatus: JobStatus.COMPLETED, parseError: null },
-        });
-      } catch (parseErr) {
-        const message = parseErr instanceof Error ? parseErr.message : "Parse failed";
-        await prisma.jobDescription.update({
-          where: { id: req.params.id },
-          data: { parseStatus: JobStatus.FAILED, parseError: message },
-        });
-      }
+      await enqueueJobDescriptionParse(req.params.id);
 
       const refreshed = await prisma.jobDescription.findUnique({
         where: { id: req.params.id },
