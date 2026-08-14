@@ -29,6 +29,8 @@ Start here: **[docs/README.md](./docs/README.md)** (phase index + status).
 | [Phase 5 interview](./docs/phase-5-interview.md) | Interview prep |
 | [Phase 5 AI](./docs/phase-5-ai.md) | FastAPI service |
 | [Phase 6 frontend](./docs/phase-6-frontend.md) | Next.js product UI |
+| [Phase 7 DevOps](./docs/phase-7-devops.md) | CI, Docker, Redis worker |
+| [Phase 7 deploy](./docs/phase-7-deploy.md) | VPS + Compose, secrets, HTTPS |
 | [pgAdmin setup](./docs/pgadmin-setup.md) | Local DB UI |
 
 ## Monorepo
@@ -44,9 +46,8 @@ docs/      → PRD, architecture, phase notes
 
 - **Phase 5 (backend + AI):** complete  
 - **Phase 6 (frontend core):** complete  
-- **Phase 7 (DevOps):** in progress — [docs/phase-7-devops.md](./docs/phase-7-devops.md)  
-  - **7.1 CI** ✅ · **7.2 Docker** ✅ · **7.3 Redis parse queue** ✅  
-  - **Next:** optional async match/interview (7.4) or deploy docs (7.5)  
+- **Phase 7 (DevOps):** complete — [docs/phase-7-devops.md](./docs/phase-7-devops.md)  
+  - 7.1 CI · 7.2 Docker · 7.3 Redis parse queue · 7.4 skipped · **7.5 [deploy docs](./docs/phase-7-deploy.md)**  
 
 ## Local infra
 
@@ -70,4 +71,5 @@ docker compose --profile app up -d --build
 # Web http://localhost:3000 · API http://localhost:4000
 ```
 
-See [docs/phase-7-devops.md](./docs/phase-7-devops.md) for image details and CI.
+See [docs/phase-7-devops.md](./docs/phase-7-devops.md) for image details and CI.  
+See [docs/phase-7-deploy.md](./docs/phase-7-deploy.md) before putting this on a VPS.

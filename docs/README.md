@@ -20,7 +20,7 @@ Keep this folder as the source of truth for what we built and what comes next.
 | 4 | Database / Prisma | Done |
 | 5 | Backend + AI | **Done** (core slices) |
 | 6 | Frontend (Next.js app) | **Done** (core product UI) |
-| 7 | DevOps, queues, CI | **In progress** — see [phase-7-devops.md](./phase-7-devops.md) |
+| 7 | DevOps, queues, CI, deploy docs | **Done** — see [phase-7-devops.md](./phase-7-devops.md) + [phase-7-deploy.md](./phase-7-deploy.md) |
 
 ## Phase 5 — Backend & AI
 
@@ -45,7 +45,8 @@ Keep this folder as the source of truth for what we built and what comes next.
 
 | Doc | Purpose | Status |
 |---|---|---|
-| [phase-7-devops.md](./phase-7-devops.md) | CI, Docker, Redis/BullMQ | In progress (7.1–7.3 done) |
+| [phase-7-devops.md](./phase-7-devops.md) | CI, Docker, Redis/BullMQ | **Done** (7.4 skipped) |
+| [phase-7-deploy.md](./phase-7-deploy.md) | VPS deploy, secrets, HTTPS, AWS map | **Done** |
 
 ## Product polish (completed)
 

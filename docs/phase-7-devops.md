@@ -13,8 +13,8 @@ Move from “works on my machine” to **repeatable builds**, **containerized se
 | **7.1** | GitHub Actions CI (typecheck, tests, builds) | **Done** |
 | **7.2** | Dockerfiles for `api` + `web`; extend `docker-compose.yml` | **Done** |
 | **7.3** | Redis + BullMQ worker — async resume/job parse | **Done** |
-| **7.4** | Async match + interview generation (optional) | Not started |
-| **7.5** | Deploy docs (AWS / single VPS) | Not started |
+| **7.4** | Async match + interview generation | **Skipped** (already fast enough on the request path) |
+| **7.5** | Deploy docs | **Done** — [phase-7-deploy.md](./phase-7-deploy.md) |
 
 ## 7.1 — CI
 
@@ -114,6 +114,14 @@ docker compose --profile app up -d --build
 ```
 
 Env: `REDIS_URL=redis://localhost:6379` (compose uses `redis://redis:6379` inside containers).
+
+## 7.4 — Skipped
+
+Match scoring and interview generation stay on the API request path. They already feel fast; queueing them is optional later.
+
+## 7.5 — Deploy
+
+See **[phase-7-deploy.md](./phase-7-deploy.md)** — VPS + Compose (supported), HTTPS, secrets, Google OAuth, worker, AWS mapping.
 
 ## Related docs
 
