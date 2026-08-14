@@ -45,21 +45,29 @@ docs/      → PRD, architecture, phase notes
 - **Phase 5 (backend + AI):** complete  
 - **Phase 6 (frontend core):** complete  
 - **Phase 7 (DevOps):** in progress — [docs/phase-7-devops.md](./docs/phase-7-devops.md)  
-  - **7.1 CI:** GitHub Actions on push/PR  
-  - **Next:** Docker for api/web, then Redis async parse  
+  - **7.1 CI** ✅ · **7.2 Docker** ✅  
+  - **Next:** Redis + BullMQ async parse (7.3)  
 
 ## Local infra
 
+**Option A — infra in Docker, apps on host** (best for day-to-day dev):
+
 ```bash
-# from repo root — Postgres + MinIO (+ Redis)
+# from repo root — Postgres, Redis, MinIO, AI
 docker compose up -d
 
 # API :4000
 cd apps/api && npm install && npm run dev
 
-# AI :8000
-cd apps/ai && .venv\Scripts\activate && uvicorn app.main:app --reload --port 8000
-
 # Web :3000
 cd apps/web && npm install && npm run dev
 ```
+
+**Option B — full stack in Docker**:
+
+```bash
+docker compose --profile app up -d --build
+# Web http://localhost:3000 · API http://localhost:4000
+```
+
+See [docs/phase-7-devops.md](./docs/phase-7-devops.md) for image details and CI.

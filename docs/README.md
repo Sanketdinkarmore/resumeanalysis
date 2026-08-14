@@ -45,7 +45,7 @@ Keep this folder as the source of truth for what we built and what comes next.
 
 | Doc | Purpose | Status |
 |---|---|---|
-| [phase-7-devops.md](./phase-7-devops.md) | CI, Docker, Redis/BullMQ plan | In progress (7.1 CI done) |
+| [phase-7-devops.md](./phase-7-devops.md) | CI, Docker, Redis/BullMQ plan | In progress (7.1–7.2 done) |
 
 ## Product polish (completed)
 

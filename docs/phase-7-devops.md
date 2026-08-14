@@ -11,7 +11,7 @@ Move from “works on my machine” to **repeatable builds**, **containerized se
 | Step | Focus | Status |
 |---|---|---|
 | **7.1** | GitHub Actions CI (typecheck, tests, builds) | **Done** |
-| **7.2** | Dockerfiles for `api` + `web`; extend `docker-compose.yml` | Not started |
+| **7.2** | Dockerfiles for `api` + `web`; extend `docker-compose.yml` | **Done** |
 | **7.3** | Redis + BullMQ worker — async resume/job parse | Not started |
 | **7.4** | Async match + interview generation (optional) | Not started |
 | **7.5** | Deploy docs (AWS / single VPS) | Not started |
@@ -28,30 +28,61 @@ On every push/PR to `main` / `master`:
 | **api** | `prisma generate`, `tsc` build |
 | **ai** | `pip install`, FastAPI app import |
 | **docker-ai** | `docker build` for `apps/ai/Dockerfile` |
+| **docker-api** | `docker build` for `apps/api/Dockerfile` |
+| **docker-web** | `docker build` for `apps/web/Dockerfile` |
 
-Local equivalent:
+## 7.2 — Docker
+
+### Images
+
+| App | Dockerfile |
+|---|---|
+| AI | [`apps/ai/Dockerfile`](../apps/ai/Dockerfile) |
+| API | [`apps/api/Dockerfile`](../apps/api/Dockerfile) |
+| Web | [`apps/web/Dockerfile`](../apps/web/Dockerfile) |
+
+API container runs `prisma migrate deploy` on start, then `node dist/index.js`.
+
+Web uses Next.js `output: 'standalone'` (see `apps/web/next.config.mjs`).
+
+### Compose profiles
+
+**Infra only** (same as before — for local `npm run dev` on api/web):
 
 ```bash
-cd apps/web && npx tsc --noEmit && npm test
-cd apps/api && npx prisma generate && npm run build
-cd apps/ai && pip install -r requirements.txt && python -c "from app.main import app"
+docker compose up -d
+# postgres :5432, redis :6379, minio :9000, ai :8000
+```
+
+**Full stack in Docker** (api + web containers):
+
+```bash
+docker compose --profile app up -d --build
+# + api :4000, web :3000
+```
+
+Open **http://localhost:3000** — browser calls API at **http://localhost:4000** (baked into web image via `NEXT_PUBLIC_API_URL`).
+
+**Google sign-in:** put `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `apps/api/.env` (not committed). Compose loads that file into the `api` container; the button appears when `/auth/google/enabled` returns true.
+
+### Service wiring (inside compose network)
+
+| Env | Value in `api` container |
+|---|---|
+| `DATABASE_URL` | `postgresql://jri:jri@postgres:5432/jri` |
+| `S3_ENDPOINT` | `http://minio:9000` |
+| `AI_SERVICE_URL` | `http://ai:8000` |
+| `CORS_ORIGIN` | `http://localhost:3000` |
+
+### Build images locally (without compose)
+
+```bash
+docker build -t jri-api:local ./apps/api
+docker build -t jri-web:local --build-arg NEXT_PUBLIC_API_URL=http://localhost:4000 ./apps/web
 docker build -t jri-ai:local ./apps/ai
 ```
 
-## 7.2 — Docker (next)
-
-Target topology (matches [architecture.md](./architecture.md)):
-
-| Service | Port | Notes |
-|---|---|---|
-| postgres | 5432 | Already in compose |
-| redis | 6379 | Already in compose |
-| minio | 9000 | Already in compose |
-| ai | 8000 | Already in compose |
-| **api** | 4000 | Add Dockerfile + compose service |
-| **web** | 3000 | Add Dockerfile + compose service |
-
-## 7.3 — Redis queues (after Docker)
+## 7.3 — Redis queues (next)
 
 Today parsing runs **inline** in API request handlers (see comment in `apps/api/src/routes/resumes.ts`).
 
@@ -62,11 +93,6 @@ Planned change:
 3. Web already polls `PENDING` / `PROCESSING` — no UI change needed
 
 Env: `REDIS_URL=redis://localhost:6379` (already available via compose).
-
-## Infra already in repo
-
-- [`docker-compose.yml`](../docker-compose.yml) — Postgres, Redis, MinIO, AI
-- [`apps/ai/Dockerfile`](../apps/ai/Dockerfile) — AI service image
 
 ## Related docs
 

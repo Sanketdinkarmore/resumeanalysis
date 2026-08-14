@@ -89,3 +89,21 @@ jobs:
 
       - name: Build AI image
         run: docker build -t jri-ai:ci ./apps/ai
+
+  docker-api:
+    name: API — Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build -t jri-api:ci ./apps/api
+
+  docker-web:
+    name: Web — Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Web image
+        run: docker build -t jri-web:ci --build-arg NEXT_PUBLIC_API_URL=http://localhost:4000 ./apps/web
