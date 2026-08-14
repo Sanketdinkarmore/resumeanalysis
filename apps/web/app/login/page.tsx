@@ -9,7 +9,16 @@ export const metadata: Metadata = {
   description: 'Sign in to your Nextup career operating system.',
 }
 
-export default function LoginPage() {
+type LoginPageProps = {
+  searchParams: Promise<{ oauth_error?: string }>
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = await searchParams
+  const oauthError = params.oauth_error
+    ? 'Google sign-in was cancelled or failed. Try again.'
+    : null
+
   return (
     <GuestOnly>
       <AuthShell
@@ -29,7 +38,7 @@ export default function LoginPage() {
           </>
         }
       >
-        <AuthForm mode="login" />
+        <AuthForm mode="login" oauthError={oauthError} />
       </AuthShell>
     </GuestOnly>
   )

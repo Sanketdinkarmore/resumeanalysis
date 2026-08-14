@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth/auth-provider'
 import { NextupMark } from '@/components/nextup-mark'
+import { SetPasswordPanel } from '@/components/dashboard/set-password-panel'
 import { DASHBOARD_NAV } from '@/lib/dashboard-nav'
 import { cn } from '@/lib/utils'
 
@@ -71,6 +72,7 @@ function SidebarFooter({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="border-t border-line pt-4">
+      <SetPasswordPanel />
       <p className="truncate px-3 font-mono text-[11px] text-ink-faint" title={user?.email}>
         {user?.email}
       </p>
@@ -193,8 +195,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Main */}
-      <div className="relative z-10 md:pl-60 lg:pl-64">
-        <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8 md:px-8 md:py-10">
+      <div className="relative z-10 min-w-0 md:pl-60 lg:pl-64">
+        <div className="mx-auto w-full min-w-0 max-w-5xl overflow-x-hidden px-4 py-5 sm:px-6 sm:py-8 md:px-8 md:py-10">
           {children}
         </div>
       </div>

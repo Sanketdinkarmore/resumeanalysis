@@ -4,7 +4,7 @@ export type DashboardNavItem = {
   index: string
 }
 
-/** Product areas — routes exist as shell destinations; feature UIs come later. */
+/** Dashboard nav — product areas wired to feature UIs. */
 export const DASHBOARD_NAV: DashboardNavItem[] = [
   { href: '/dashboard', label: 'Overview', index: '01' },
   { href: '/dashboard/resumes', label: 'Resumes', index: '02' },

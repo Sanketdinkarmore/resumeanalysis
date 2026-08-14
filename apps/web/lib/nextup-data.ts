@@ -27,7 +27,7 @@ export const STAGES: Stage[] = [
 export const CANDIDATE = {
   name: 'Sanket More',
   title: 'Full Stack Developer',
-  skills: ['React', 'Node.js', 'PostgreSQL', 'AWS', 'TypeScript', 'Redis'],
+  skills: ['React', 'Node.js', 'PostgreSQL', 'AWS', 'TypeScript', 'Redis', ],
   sections: ['Experience', 'Projects', 'Education'],
 }
 

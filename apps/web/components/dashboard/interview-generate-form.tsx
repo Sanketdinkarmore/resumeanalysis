@@ -9,31 +9,12 @@ import {
   listApplications,
   listJobs,
   listResumes,
+  mapApiError,
   type ApplicationListItem,
   type JobListItem,
   type ResumeListItem,
 } from '@/lib/api'
 import { cn } from '@/lib/utils'
-
-function mapError(err: unknown): string {
-  if (err instanceof ApiError) {
-    switch (err.code) {
-      case 'NOT_FOUND':
-        return 'Job, resume, or application not found. Refresh and pick again.'
-      case 'APPLICATION_JD_MISMATCH':
-        return 'That application is not linked to the selected job.'
-      case 'APPLICATION_SET_EXISTS':
-        return 'A set already exists for this application. Generate again to replace it.'
-      case 'GENERATION_FAILED':
-        return err.message || 'Question generation failed. Is the AI service running with Groq/Gemini configured?'
-      case 'VALIDATION_ERROR':
-        return 'Choose a job to generate questions.'
-      default:
-        return err.message || 'Could not generate interview questions.'
-    }
-  }
-  return 'Could not reach the server. Are the API (:4000) and AI (:8000) running?'
-}
 
 const fieldClass = cn(
   'mt-2 w-full rounded-lg border border-line bg-paper px-3.5 py-2.5 text-[15px] text-ink',
@@ -71,11 +52,7 @@ export function InterviewGenerateForm({ onCreated }: { onCreated?: () => void })
         setApplications(appRows)
       } catch (err) {
         if (cancelled) return
-        setLoadError(
-          err instanceof ApiError
-            ? err.message
-            : 'Could not load jobs, resumes, and applications.',
-        )
+        setLoadError(mapApiError(err, 'load', 'Could not load jobs, resumes, and applications.'))
       } finally {
         if (!cancelled) setLoadingOptions(false)
       }
@@ -116,7 +93,7 @@ export function InterviewGenerateForm({ onCreated }: { onCreated?: () => void })
       onCreated?.()
       router.push(`/dashboard/interview/${result.questionSet.id}`)
     } catch (err) {
-      setError(mapError(err))
+      setError(mapApiError(err, 'interview'))
     } finally {
       setPending(false)
     }

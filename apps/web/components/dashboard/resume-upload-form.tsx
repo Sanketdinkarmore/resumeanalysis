@@ -5,27 +5,10 @@ import { useRouter } from 'next/navigation'
 import {
   ApiError,
   MAX_RESUME_PDF_BYTES,
+  mapApiError,
   uploadResume,
 } from '@/lib/api'
 import { cn } from '@/lib/utils'
-
-function mapUploadError(err: unknown): string {
-  if (err instanceof ApiError) {
-    switch (err.code) {
-      case 'FILE_REQUIRED':
-        return 'Choose a PDF file to upload.'
-      case 'INVALID_FILE_TYPE':
-        return 'Only PDF files are supported.'
-      case 'FILE_TOO_LARGE':
-        return 'PDF must be 5MB or smaller.'
-      case 'NAME_REQUIRED':
-        return 'Give this resume a name.'
-      default:
-        return err.message || 'Upload failed. Try again.'
-    }
-  }
-  return 'Could not reach the server. Is the API (and AI service) running?'
-}
 
 export function ResumeUploadForm({ onUploaded }: { onUploaded?: () => void }) {
   const router = useRouter()
@@ -81,7 +64,7 @@ export function ResumeUploadForm({ onUploaded }: { onUploaded?: () => void }) {
       onUploaded?.()
       router.push(`/dashboard/resumes/${resume.id}`)
     } catch (err) {
-      setError(mapUploadError(err))
+      setError(mapApiError(err, 'resume-upload'))
     } finally {
       setPending(false)
     }

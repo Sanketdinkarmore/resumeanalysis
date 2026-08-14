@@ -209,6 +209,52 @@ resumesRouter.post("/", (req, res, next) => {
   });
 });
 
+// DELETE /resumes/:id — soft delete (hidden from lists; blocks if linked)
+resumesRouter.delete("/:id", async (req, res, next) => {
+  try {
+    const userId = (req as unknown as AuthedRequest).user.sub;
+
+    const existing = await prisma.resumeVersion.findUnique({
+      where: { id: req.params.id },
+      select: {
+        userId: true,
+        deletedAt: true,
+        _count: {
+          select: {
+            matchAnalyses: true,
+            applications: true,
+          },
+        },
+      },
+    });
+
+    if (!existing || existing.userId !== userId || existing.deletedAt) {
+      next(new AppError(404, "NOT_FOUND", "Resume not found"));
+      return;
+    }
+
+    if (existing._count.matchAnalyses > 0 || existing._count.applications > 0) {
+      next(
+        new AppError(
+          409,
+          "HAS_DEPENDENTS",
+          "Cannot delete a resume linked to matches or applications",
+        ),
+      );
+      return;
+    }
+
+    await prisma.resumeVersion.update({
+      where: { id: req.params.id },
+      data: { deletedAt: new Date() },
+    });
+
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+});
+
 function parseTags(value: unknown) {
   if (typeof value !== "string" || !value.trim()) {
     return [] as string[];

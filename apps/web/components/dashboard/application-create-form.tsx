@@ -9,27 +9,12 @@ import {
   listJobs,
   listMatches,
   listResumes,
+  mapApiError,
   type JobListItem,
   type MatchListItem,
   type ResumeListItem,
 } from '@/lib/api'
 import { cn } from '@/lib/utils'
-
-function mapError(err: unknown): string {
-  if (err instanceof ApiError) {
-    switch (err.code) {
-      case 'NOT_FOUND':
-        return 'Resume, job, or match not found. Refresh and pick again.'
-      case 'ANALYSIS_MISMATCH':
-        return 'That match does not belong to the selected resume and job.'
-      case 'VALIDATION_ERROR':
-        return 'Choose a resume and a job.'
-      default:
-        return err.message || 'Could not create this application.'
-    }
-  }
-  return 'Could not reach the server. Is the API running on :4000?'
-}
 
 function formatScore(n: number | null) {
   if (n == null || Number.isNaN(n)) return '—'
@@ -73,11 +58,7 @@ export function ApplicationCreateForm({ onCreated }: { onCreated?: () => void })
         setMatches(matchRows)
       } catch (err) {
         if (cancelled) return
-        setLoadError(
-          err instanceof ApiError
-            ? err.message
-            : 'Could not load resumes and jobs.',
-        )
+        setLoadError(mapApiError(err, 'load', 'Could not load resumes and jobs.'))
       } finally {
         if (!cancelled) setLoadingOptions(false)
       }
@@ -123,7 +104,7 @@ export function ApplicationCreateForm({ onCreated }: { onCreated?: () => void })
       onCreated?.()
       router.push(`/dashboard/applications/${app.id}`)
     } catch (err) {
-      setError(mapError(err))
+      setError(mapApiError(err, 'application'))
     } finally {
       setPending(false)
     }

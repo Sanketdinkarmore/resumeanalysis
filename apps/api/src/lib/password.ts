@@ -7,8 +7,9 @@ export async function hashPassword(password: string): Promise<string> {
 
 /** Compare login password against the stored hash. */
 export async function verifyPassword(
-  passwordHash: string,
+  passwordHash: string | null | undefined,
   password: string,
 ): Promise<boolean> {
+  if (!passwordHash) return false;
   return argon2.verify(passwordHash, password);
 }

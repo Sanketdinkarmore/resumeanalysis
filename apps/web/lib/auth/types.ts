@@ -5,6 +5,7 @@ export type User = {
   email: string
   role: UserRole
   createdAt: string
+  hasPassword: boolean
 }
 
 /** Shape returned by register / login / refresh */

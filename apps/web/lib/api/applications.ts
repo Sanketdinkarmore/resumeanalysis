@@ -101,3 +101,7 @@ export async function updateApplicationStage(
   })
   return data.application
 }
+
+export async function deleteApplication(id: string): Promise<void> {
+  await apiRequest<void>(`/applications/${id}`, { method: 'DELETE' })
+}

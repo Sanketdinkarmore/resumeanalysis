@@ -5,10 +5,12 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import {
   ApiError,
+  deleteInterviewSet,
   generateAnswerOutline,
   getInterviewSet,
   getJob,
   getResume,
+  mapApiError,
   type InterviewQuestion,
   type InterviewSetDetail,
   type JobDetail,
@@ -17,6 +19,7 @@ import {
   type ResumeDetail,
 } from '@/lib/api'
 import { Chip } from '@/components/primitives'
+import { DeleteResourceSection } from '@/components/dashboard/delete-resource-section'
 import { cn } from '@/lib/utils'
 
 const CATEGORY_ORDER: QuestionCategory[] = ['TECHNICAL', 'BEHAVIORAL', 'PROJECT']
@@ -71,13 +74,7 @@ function groupByCategory(questions: InterviewQuestion[]) {
 }
 
 function outlineError(err: unknown): string {
-  if (err instanceof ApiError) {
-    if (err.code === 'GENERATION_FAILED') {
-      return err.message || 'Outline generation failed. Check AI service + Gemini key.'
-    }
-    return err.message || 'Could not generate outline.'
-  }
-  return 'Could not reach the server.'
+  return mapApiError(err, 'interview', 'Could not generate outline.')
 }
 
 export function InterviewSetDetailView() {
@@ -110,7 +107,7 @@ export function InterviewSetDetailView() {
     } catch (err) {
       setSet(null)
       if (err instanceof ApiError) {
-        setError(err.status === 404 ? 'Interview set not found.' : err.message)
+        setError(err.status === 404 ? 'Interview set not found.' : mapApiError(err, 'load'))
       } else {
         setError('Could not load this interview set.')
       }
@@ -332,6 +329,13 @@ export function InterviewSetDetailView() {
           ))}
         </div>
       )}
+
+      <DeleteResourceSection
+        description="Remove this interview question set. You can generate a new set later from the application or match page."
+        confirmText="Delete this interview set? This cannot be undone."
+        redirectTo="/dashboard/interview"
+        onDelete={() => deleteInterviewSet(set.id)}
+      />
     </div>
   )
 }

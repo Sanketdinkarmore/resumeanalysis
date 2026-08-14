@@ -1,7 +1,8 @@
 export { apiRequest } from '@/lib/api/client'
-export { register, login, logout, getMe, type AuthCredentials } from '@/lib/api/auth'
-export { listResumes, getResume, uploadResume, MAX_RESUME_PDF_BYTES } from '@/lib/api/resumes'
-export { listJobs, getJob, createJob, type CreateJobInput, type JobCreateResult } from '@/lib/api/jobs'
+export { mapApiError, type ApiErrorContext } from '@/lib/api/map-api-error'
+export { register, login, logout, getMe, setPassword, isGoogleSignInEnabled, completeOAuthFromTokens, type AuthCredentials } from '@/lib/api/auth'
+export { listResumes, getResume, uploadResume, deleteResume, MAX_RESUME_PDF_BYTES } from '@/lib/api/resumes'
+export { listJobs, getJob, createJob, deleteJob, type CreateJobInput, type JobCreateResult } from '@/lib/api/jobs'
 export {
   listMatches,
   getMatch,
@@ -14,6 +15,7 @@ export {
   createApplication,
   updateApplicationNotes,
   updateApplicationStage,
+  deleteApplication,
   type ApplicationCreateResult,
 } from '@/lib/api/applications'
 export type {
@@ -52,6 +54,7 @@ export {
   getInterviewSet,
   createInterviewSet,
   generateAnswerOutline,
+  deleteInterviewSet,
   type InterviewSetCreateResult,
 } from '@/lib/api/interview'
 export type {

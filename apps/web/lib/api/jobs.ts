@@ -55,3 +55,7 @@ export async function createJob(input: CreateJobInput): Promise<JobCreateResult>
   )
   return data.jobDescription
 }
+
+export async function deleteJob(id: string): Promise<void> {
+  await apiRequest<void>(`/job-descriptions/${id}`, { method: 'DELETE' })
+}

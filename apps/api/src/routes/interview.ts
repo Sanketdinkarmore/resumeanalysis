@@ -312,6 +312,28 @@ interviewRouter.get("/:id", async (req, res, next) => {
   }
 });
 
+// DELETE /interview-question-sets/:id
+interviewRouter.delete("/:id", async (req, res, next) => {
+  try {
+    const userId = (req as unknown as AuthedRequest).user.sub;
+
+    const existing = await prisma.interviewQuestionSet.findUnique({
+      where: { id: req.params.id },
+      select: { userId: true },
+    });
+
+    if (!existing || existing.userId !== userId) {
+      next(new AppError(404, "NOT_FOUND", "Interview question set not found"));
+      return;
+    }
+
+    await prisma.interviewQuestionSet.delete({ where: { id: req.params.id } });
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /interview-question-sets/:id/questions/:questionId/answer-outline
 interviewRouter.post("/:id/questions/:questionId/answer-outline", async (req, res, next) => {
   try {

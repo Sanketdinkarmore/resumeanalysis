@@ -8,28 +8,11 @@ import {
   createMatch,
   listJobs,
   listResumes,
+  mapApiError,
   type JobListItem,
   type ResumeListItem,
 } from '@/lib/api'
 import { cn } from '@/lib/utils'
-
-function mapError(err: unknown): string {
-  if (err instanceof ApiError) {
-    switch (err.code) {
-      case 'RESUME_NOT_PARSED':
-        return 'That resume is not parsed yet. Wait until status is Completed, then try again.'
-      case 'JD_NOT_PARSED':
-        return 'That job is not parsed yet. Wait until status is Completed, then try again.'
-      case 'NOT_FOUND':
-        return 'Resume or job not found. Refresh and pick again.'
-      case 'VALIDATION_ERROR':
-        return 'Choose both a resume and a job.'
-      default:
-        return err.message || 'Could not run this match.'
-    }
-  }
-  return 'Could not reach the server. Is the API running on :4000?'
-}
 
 const fieldClass = cn(
   'mt-2 w-full rounded-lg border border-line bg-paper px-3.5 py-2.5 text-[15px] text-ink',
@@ -60,11 +43,7 @@ export function MatchRunForm({ onCreated }: { onCreated?: () => void }) {
         setJobs(jobRows.filter((j) => j.parseStatus === 'COMPLETED'))
       } catch (err) {
         if (cancelled) return
-        setLoadError(
-          err instanceof ApiError
-            ? err.message
-            : 'Could not load resumes and jobs for matching.',
-        )
+        setLoadError(mapApiError(err, 'load', 'Could not load resumes and jobs for matching.'))
       } finally {
         if (!cancelled) setLoadingOptions(false)
       }
@@ -95,7 +74,7 @@ export function MatchRunForm({ onCreated }: { onCreated?: () => void }) {
       onCreated?.()
       router.push(`/dashboard/matches/${analysis.id}`)
     } catch (err) {
-      setError(mapError(err))
+      setError(mapApiError(err, 'match'))
     } finally {
       setPending(false)
     }

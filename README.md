@@ -44,7 +44,9 @@ docs/      → PRD, architecture, phase notes
 
 - **Phase 5 (backend + AI):** complete  
 - **Phase 6 (frontend core):** complete  
-- **Next:** polish (Overview, UX, deletes), then queues / DevOps / tests  
+- **Phase 7 (DevOps):** in progress — [docs/phase-7-devops.md](./docs/phase-7-devops.md)  
+  - **7.1 CI:** GitHub Actions on push/PR  
+  - **Next:** Docker for api/web, then Redis async parse  
 
 ## Local infra
 

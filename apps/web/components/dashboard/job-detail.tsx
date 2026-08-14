@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { ApiError, getJob, type JobDetail } from '@/lib/api'
+import { ApiError, deleteJob, getJob, mapApiError, type JobDetail } from '@/lib/api'
 import { Chip } from '@/components/primitives'
+import { DeleteResourceSection } from '@/components/dashboard/delete-resource-section'
 import { cn } from '@/lib/utils'
 
 function statusTone(status: JobDetail['parseStatus']) {
@@ -64,7 +65,7 @@ export function JobDetailView() {
     } catch (err) {
       setJob(null)
       if (err instanceof ApiError) {
-        setError(err.status === 404 ? 'Job not found.' : err.message)
+        setError(err.status === 404 ? 'Job not found.' : mapApiError(err, 'load'))
       } else {
         setError('Could not load this job.')
       }
@@ -159,6 +160,13 @@ export function JobDetailView() {
           {job.rawText}
         </pre>
       </section>
+
+      <DeleteResourceSection
+        description="Remove this job description. You cannot delete jobs linked to match analyses or applications."
+        confirmText={`Delete ${job.companyName} — ${job.roleTitle}? This cannot be undone.`}
+        redirectTo="/dashboard/jobs"
+        onDelete={() => deleteJob(job.id)}
+      />
     </div>
   )
 }

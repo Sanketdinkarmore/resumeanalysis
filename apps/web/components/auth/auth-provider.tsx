@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react'
 import {
+  completeOAuthFromTokens,
   getMe,
   login as apiLogin,
   logout as apiLogout,
@@ -26,6 +27,11 @@ type AuthContextValue = {
   login: (credentials: AuthCredentials) => Promise<void>
   register: (credentials: AuthCredentials) => Promise<void>
   logout: () => Promise<void>
+  completeOAuthSession: (tokens: {
+    accessToken: string
+    refreshToken: string
+  }) => Promise<void>
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -88,9 +94,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  const completeOAuthSession = useCallback(
+    async (tokens: { accessToken: string; refreshToken: string }) => {
+      const me = await completeOAuthFromTokens(tokens.accessToken, tokens.refreshToken)
+      setUser(me)
+      setStatus('authenticated')
+    },
+    [],
+  )
+
+  const refreshUser = useCallback(async () => {
+    const me = await getMe()
+    setUser(me)
+    setStatus('authenticated')
+  }, [])
+
   const value = useMemo(
-    () => ({ user, status, login, register, logout }),
-    [user, status, login, register, logout],
+    () => ({
+      user,
+      status,
+      login,
+      register,
+      logout,
+      completeOAuthSession,
+      refreshUser,
+    }),
+    [user, status, login, register, logout, completeOAuthSession, refreshUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

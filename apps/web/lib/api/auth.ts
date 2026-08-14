@@ -50,3 +50,25 @@ export async function getMe(): Promise<User> {
   const data = await apiRequest<{ user: User }>('/auth/me')
   return data.user
 }
+
+export async function setPassword(password: string): Promise<void> {
+  await apiRequest<void>('/auth/set-password', {
+    method: 'POST',
+    body: { password },
+  })
+}
+
+export async function isGoogleSignInEnabled(): Promise<boolean> {
+  const data = await apiRequest<{ enabled: boolean }>('/auth/google/enabled', {
+    auth: false,
+  })
+  return data.enabled
+}
+
+export async function completeOAuthFromTokens(
+  accessToken: string,
+  refreshToken: string,
+): Promise<User> {
+  setTokens(accessToken, refreshToken)
+  return getMe()
+}

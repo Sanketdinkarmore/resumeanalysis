@@ -7,6 +7,7 @@ import {
   listJobs,
   listMatches,
   listResumes,
+  mapApiError,
   type JobListItem,
   type JobStatus,
   type MatchListItem,
@@ -76,7 +77,7 @@ export function MatchesList() {
     } catch (err) {
       setAnalyses(null)
       if (err instanceof ApiError) {
-        setError(err.message)
+        setError(mapApiError(err, 'load'))
       } else {
         setError('Could not load matches. Is the API running on :4000?')
       }

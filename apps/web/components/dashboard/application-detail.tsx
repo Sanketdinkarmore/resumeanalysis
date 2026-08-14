@@ -2,21 +2,27 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import {
   ApiError,
   APPLICATION_STAGES,
+  createInterviewSet,
   getApplication,
   getJob,
   getResume,
+  deleteApplication,
+  listInterviewSets,
+  mapApiError,
   updateApplicationNotes,
   updateApplicationStage,
   type ApplicationDetail,
   type ApplicationStage,
+  type InterviewSetListItem,
   type JobDetail,
   type ResumeDetail,
 } from '@/lib/api'
 import { Chip } from '@/components/primitives'
+import { DeleteResourceSection } from '@/components/dashboard/delete-resource-section'
 import { cn } from '@/lib/utils'
 
 function stageTone(
@@ -61,13 +67,17 @@ const fieldClass = cn(
 
 export function ApplicationDetailView() {
   const params = useParams<{ id: string }>()
+  const router = useRouter()
   const id = params.id
 
   const [app, setApp] = useState<ApplicationDetail | null>(null)
   const [resume, setResume] = useState<ResumeDetail | null>(null)
   const [job, setJob] = useState<JobDetail | null>(null)
+  const [interviewSet, setInterviewSet] = useState<InterviewSetListItem | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [interviewError, setInterviewError] = useState<string | null>(null)
+  const [interviewPending, setInterviewPending] = useState(false)
 
   const [notesDraft, setNotesDraft] = useState('')
   const [notesError, setNotesError] = useState<string | null>(null)
@@ -90,17 +100,19 @@ export function ApplicationDetailView() {
       setNotesDraft(row.notes ?? '')
       setNextStage('')
       setStageNote('')
-      const [r, j] = await Promise.all([
+      const [r, j, sets] = await Promise.all([
         getResume(row.resumeVersionId).catch(() => null),
         getJob(row.jobDescriptionId).catch(() => null),
+        listInterviewSets().catch(() => [] as InterviewSetListItem[]),
       ])
       setResume(r)
       setJob(j)
+      setInterviewSet(sets.find((s) => s.applicationId === row.id) ?? null)
       setError(null)
     } catch (err) {
       setApp(null)
       if (err instanceof ApiError) {
-        setError(err.status === 404 ? 'Application not found.' : err.message)
+        setError(err.status === 404 ? 'Application not found.' : mapApiError(err, 'load'))
       } else {
         setError('Could not load this application.')
       }
@@ -112,6 +124,23 @@ export function ApplicationDetailView() {
   useEffect(() => {
     void load()
   }, [load])
+
+  async function onGenerateInterview() {
+    if (!app) return
+    setInterviewError(null)
+    setInterviewPending(true)
+    try {
+      const created = await createInterviewSet({
+        jobDescriptionId: app.jobDescriptionId,
+        applicationId: app.id,
+      })
+      router.push(`/dashboard/interview/${created.questionSet.id}`)
+    } catch (err) {
+      setInterviewError(mapApiError(err, 'interview'))
+    } finally {
+      setInterviewPending(false)
+    }
+  }
 
   async function onSaveNotes(e: React.FormEvent) {
     e.preventDefault()
@@ -128,11 +157,7 @@ export function ApplicationDetailView() {
       )
       setNotesDraft(updated.notes ?? '')
     } catch (err) {
-      setNotesError(
-        err instanceof ApiError
-          ? err.message || 'Could not save notes.'
-          : 'Could not save notes.',
-      )
+      setNotesError(mapApiError(err, 'application'))
     } finally {
       setNotesPending(false)
     }
@@ -147,15 +172,7 @@ export function ApplicationDetailView() {
       await updateApplicationStage(id, nextStage, stageNote.trim() || undefined)
       await load({ quiet: true })
     } catch (err) {
-      if (err instanceof ApiError) {
-        if (err.code === 'SAME_STAGE') {
-          setStageError('Already in that stage.')
-        } else {
-          setStageError(err.message || 'Could not update stage.')
-        }
-      } else {
-        setStageError('Could not update stage.')
-      }
+      setStageError(mapApiError(err, 'application'))
     } finally {
       setStagePending(false)
     }
@@ -248,6 +265,46 @@ export function ApplicationDetailView() {
         <p className="mt-4 font-mono text-[11px] text-ink-faint">
           Created {formatDateTime(app.createdAt)} · Updated {formatDateTime(app.updatedAt)}
         </p>
+      </section>
+
+      <section className="mt-8 rounded-xl border border-line bg-card/60 p-5 sm:p-6">
+        <p className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-ink-faint">
+          Interview prep
+        </p>
+        <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">
+          Generate tailored questions from this application&apos;s resume and job description.
+        </p>
+        {interviewError && (
+          <p role="alert" className="mt-3 text-[13px] text-neg">
+            {interviewError}
+          </p>
+        )}
+        <div className="mt-4">
+          {interviewSet ? (
+            <Link
+              href={`/dashboard/interview/${interviewSet.id}`}
+              className={cn(
+                'inline-flex items-center justify-center rounded-full border border-line px-5 py-2.5',
+                'text-sm font-medium text-ink transition-colors hover:bg-card',
+              )}
+            >
+              View interview set ({interviewSet._count.questions} questions)
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void onGenerateInterview()}
+              disabled={interviewPending}
+              className={cn(
+                'inline-flex items-center justify-center rounded-full bg-accent px-5 py-2.5',
+                'text-sm font-medium text-accent-foreground transition-all hover:brightness-105',
+                'disabled:pointer-events-none disabled:opacity-60',
+              )}
+            >
+              {interviewPending ? 'Generating…' : 'Generate interview questions'}
+            </button>
+          )}
+        </div>
       </section>
 
       <form
@@ -399,6 +456,13 @@ export function ApplicationDetailView() {
           </ol>
         )}
       </section>
+
+      <DeleteResourceSection
+        description="Permanently remove this application and its stage history. Linked resume and job records are kept."
+        confirmText={`Delete application for ${app.companyName} — ${app.roleTitle}? This cannot be undone.`}
+        redirectTo="/dashboard/applications"
+        onDelete={() => deleteApplication(app.id)}
+      />
     </div>
   )
 }

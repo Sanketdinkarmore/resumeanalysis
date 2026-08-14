@@ -2,20 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ApiError, createJob } from '@/lib/api'
+import { ApiError, createJob, mapApiError } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 const MIN_RAW = 50
-
-function mapError(err: unknown): string {
-  if (err instanceof ApiError) {
-    if (err.code === 'VALIDATION_ERROR') {
-      return 'Check company, role title, and description (min 50 characters).'
-    }
-    return err.message || 'Could not save this job.'
-  }
-  return 'Could not reach the server. Is the API (and AI service) running?'
-}
 
 const fieldClass = cn(
   'mt-2 w-full rounded-lg border border-line bg-paper px-3.5 py-2.5 text-[15px] text-ink',
@@ -64,7 +54,7 @@ export function JobCreateForm({ onCreated }: { onCreated?: () => void }) {
       onCreated?.()
       router.push(`/dashboard/jobs/${job.id}`)
     } catch (err) {
-      setError(mapError(err))
+      setError(mapApiError(err, 'job'))
     } finally {
       setPending(false)
     }

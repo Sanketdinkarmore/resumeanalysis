@@ -50,3 +50,7 @@ export async function generateAnswerOutline(
   )
   return data.question
 }
+
+export async function deleteInterviewSet(id: string): Promise<void> {
+  await apiRequest<void>(`/interview-question-sets/${id}`, { method: 'DELETE' })
+}

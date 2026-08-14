@@ -35,3 +35,7 @@ export async function uploadResume(input: {
   })
   return data.resume
 }
+
+export async function deleteResume(id: string): Promise<void> {
+  await apiRequest<void>(`/resumes/${id}`, { method: 'DELETE' })
+}

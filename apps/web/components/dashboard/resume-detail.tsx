@@ -5,12 +5,15 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import {
   ApiError,
+  deleteResume,
   getResume,
+  mapApiError,
   type ResumeDetail,
   type ResumeExperience,
   type ResumeTextItem,
 } from '@/lib/api'
 import { Chip } from '@/components/primitives'
+import { DeleteResourceSection } from '@/components/dashboard/delete-resource-section'
 import { cn } from '@/lib/utils'
 
 function statusTone(status: ResumeDetail['parseStatus']) {
@@ -124,7 +127,7 @@ export function ResumeDetailView() {
     } catch (err) {
       setResume(null)
       if (err instanceof ApiError) {
-        setError(err.status === 404 ? 'Resume not found.' : err.message)
+        setError(err.status === 404 ? 'Resume not found.' : mapApiError(err, 'load'))
       } else {
         setError('Could not load this resume.')
       }
@@ -283,6 +286,13 @@ export function ResumeDetailView() {
         label="Certifications"
         items={certifications}
         emptyHint={afterParse ? 'No certifications extracted.' : 'Certifications appear after a successful parse.'}
+      />
+
+      <DeleteResourceSection
+        description="Hide this resume from your library. You cannot delete resumes linked to match analyses or applications."
+        confirmText={`Delete resume "${resume.name}"? This cannot be undone.`}
+        redirectTo="/dashboard/resumes"
+        onDelete={() => deleteResume(resume.id)}
       />
     </div>
   )

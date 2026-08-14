@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ApiError, listResumes, type JobStatus, type ResumeListItem } from '@/lib/api'
+import { ApiError, listResumes, mapApiError, type JobStatus, type ResumeListItem } from '@/lib/api'
 import { Chip } from '@/components/primitives'
 import { ResumeUploadForm } from '@/components/dashboard/resume-upload-form'
+import { isParseInProgress, parseStatusLabel } from '@/lib/parse-status'
 import { cn } from '@/lib/utils'
 
 function statusTone(status: JobStatus): 'pos' | 'neg' | 'accent' | 'info' | 'default' {
@@ -54,7 +55,7 @@ export function ResumesList() {
     } catch (err) {
       setResumes(null)
       if (err instanceof ApiError) {
-        setError(err.message)
+        setError(mapApiError(err, 'load'))
       } else {
         setError('Could not load resumes. Is the API running on :4000?')
       }
@@ -67,14 +68,25 @@ export function ResumesList() {
     void load()
   }, [load])
 
+  // Auto-refresh while any resume is still parsing
+  useEffect(() => {
+    if (!resumes?.some((r) => isParseInProgress(r.parseStatus))) return
+    const id = window.setInterval(() => {
+      void listResumes()
+        .then(setResumes)
+        .catch(() => {})
+    }, 4000)
+    return () => window.clearInterval(id)
+  }, [resumes])
+
   return (
-    <div>
+    <div className="min-w-0 overflow-x-hidden">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-accent">
             02 · Resumes
           </p>
-          <h1 className="mt-3 text-balance text-3xl font-medium leading-[1.05] tracking-tight text-ink sm:text-4xl">
+          <h1 className="mt-3 text-balance text-2xl font-medium leading-[1.05] tracking-tight text-ink sm:text-3xl md:text-4xl">
             Your resume versions.
           </h1>
           <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-ink-soft">
@@ -94,6 +106,13 @@ export function ResumesList() {
       <div className="mt-8">
         <ResumeUploadForm onUploaded={() => void load()} />
       </div>
+
+      {resumes?.some((r) => isParseInProgress(r.parseStatus)) && (
+        <p className="mt-6 rounded-lg border border-accent/30 bg-accent/5 px-4 py-3 text-[13px] text-ink-soft">
+          <span className="font-medium text-ink">Parsing in progress</span> — this list refreshes
+          automatically every few seconds.
+        </p>
+      )}
 
       {error && (
         <p
@@ -126,17 +145,28 @@ export function ResumesList() {
               <Link
                 href={`/dashboard/resumes/${r.id}`}
                 className={cn(
-                  'flex flex-col gap-3 rounded-xl border border-line bg-card/60 px-4 py-4 transition-colors',
-                  'hover:border-ink/25 hover:bg-card sm:flex-row sm:items-center sm:justify-between sm:px-5',
+                  'flex flex-col gap-2 rounded-xl border border-line bg-card/60 px-3 py-3 transition-colors',
+                  'hover:border-ink/25 hover:bg-card sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5 sm:py-4',
+                  isParseInProgress(r.parseStatus) && 'border-accent/25',
                 )}
               >
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="truncate text-[15px] font-medium text-ink">{r.name}</span>
+                    <span className="truncate text-[14px] font-medium text-ink sm:text-[15px]">
+                      {r.name}
+                    </span>
                     <Chip tone={statusTone(r.parseStatus)}>{r.parseStatus}</Chip>
                   </div>
-                  <p className="mt-1 truncate font-mono text-[11px] text-ink-faint">
-                    {r.originalFilename} · {formatBytes(r.sizeBytes)} · {formatDate(r.createdAt)}
+                  <p className="mt-1 font-mono text-[11px] text-ink-faint">
+                    {isParseInProgress(r.parseStatus) ? (
+                      <span className="text-accent">{parseStatusLabel(r.parseStatus)}</span>
+                    ) : (
+                      parseStatusLabel(r.parseStatus)
+                    )}
+                    {' · '}
+                    <span className="truncate">{r.originalFilename}</span>
+                    {' · '}
+                    {formatBytes(r.sizeBytes)} · {formatDate(r.createdAt)}
                   </p>
                   {r.parseError && (
                     <p className="mt-1.5 text-[12px] text-neg line-clamp-2">{r.parseError}</p>
@@ -154,7 +184,7 @@ export function ResumesList() {
                     </div>
                   )}
                 </div>
-                <span className="shrink-0 font-mono text-[11px] text-ink-faint sm:pl-4">
+                <span className="shrink-0 self-start font-mono text-[11px] text-ink-faint sm:self-center sm:pl-4">
                   View →
                 </span>
               </Link>

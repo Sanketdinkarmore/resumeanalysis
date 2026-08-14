@@ -2,12 +2,19 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import {
   ApiError,
+  createApplication,
+  createInterviewSet,
   getJob,
   getMatch,
   getResume,
+  listApplications,
+  listInterviewSets,
+  mapApiError,
+  type ApplicationListItem,
+  type InterviewSetListItem,
   type JobDetail,
   type MatchAnalysis,
   type MatchRecommendation,
@@ -68,13 +75,19 @@ function SkillPills({
 
 export function MatchDetailView() {
   const params = useParams<{ id: string }>()
+  const router = useRouter()
   const id = params.id
 
   const [analysis, setAnalysis] = useState<MatchAnalysis | null>(null)
   const [resume, setResume] = useState<ResumeDetail | null>(null)
   const [job, setJob] = useState<JobDetail | null>(null)
+  const [linkedApp, setLinkedApp] = useState<ApplicationListItem | null>(null)
+  const [linkedInterview, setLinkedInterview] = useState<InterviewSetListItem | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [trackPending, setTrackPending] = useState(false)
+  const [interviewPending, setInterviewPending] = useState(false)
 
   const load = useCallback(async () => {
     if (!id) return
@@ -83,16 +96,34 @@ export function MatchDetailView() {
     try {
       const a = await getMatch(id)
       setAnalysis(a)
-      const [r, j] = await Promise.all([
+      const [r, j, apps, sets] = await Promise.all([
         getResume(a.resumeVersionId).catch(() => null),
         getJob(a.jobDescriptionId).catch(() => null),
+        listApplications().catch(() => [] as ApplicationListItem[]),
+        listInterviewSets().catch(() => [] as InterviewSetListItem[]),
       ])
       setResume(r)
       setJob(j)
+      const app =
+        apps.find(
+          (row) =>
+            row.resumeVersionId === a.resumeVersionId &&
+            row.jobDescriptionId === a.jobDescriptionId,
+        ) ?? null
+      setLinkedApp(app)
+      setLinkedInterview(
+        app
+          ? (sets.find((row) => row.applicationId === app.id) ?? null)
+          : (sets.find(
+              (row) =>
+                row.jobDescriptionId === a.jobDescriptionId &&
+                !row.applicationId,
+            ) ?? null),
+      )
     } catch (err) {
       setAnalysis(null)
       if (err instanceof ApiError) {
-        setError(err.status === 404 ? 'Match not found.' : err.message)
+        setError(err.status === 404 ? 'Match not found.' : mapApiError(err, 'load'))
       } else {
         setError('Could not load this match.')
       }
@@ -104,6 +135,50 @@ export function MatchDetailView() {
   useEffect(() => {
     void load()
   }, [load])
+
+  async function onTrackApplication() {
+    if (!analysis || linkedApp) return
+    setActionError(null)
+    setTrackPending(true)
+    try {
+      const app = await createApplication({
+        resumeVersionId: analysis.resumeVersionId,
+        jobDescriptionId: analysis.jobDescriptionId,
+        matchAnalysisId: analysis.id,
+      })
+      router.push(`/dashboard/applications/${app.id}`)
+    } catch (err) {
+      setActionError(mapApiError(err, 'application'))
+    } finally {
+      setTrackPending(false)
+    }
+  }
+
+  async function onPrepInterview() {
+    if (!analysis) return
+    setActionError(null)
+    setInterviewPending(true)
+    try {
+      let applicationId = linkedApp?.id
+      if (!applicationId) {
+        const app = await createApplication({
+          resumeVersionId: analysis.resumeVersionId,
+          jobDescriptionId: analysis.jobDescriptionId,
+          matchAnalysisId: analysis.id,
+        })
+        applicationId = app.id
+      }
+      const created = await createInterviewSet({
+        jobDescriptionId: analysis.jobDescriptionId,
+        applicationId,
+      })
+      router.push(`/dashboard/interview/${created.questionSet.id}`)
+    } catch (err) {
+      setActionError(mapApiError(err, 'interview'))
+    } finally {
+      setInterviewPending(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -178,6 +253,71 @@ export function MatchDetailView() {
         </div>
         <Chip tone={analysis.status === 'COMPLETED' ? 'pos' : 'neg'}>{analysis.status}</Chip>
       </div>
+
+      <section className="mt-8 rounded-xl border border-line bg-card/60 p-5 sm:p-6">
+        <p className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-ink-faint">
+          Next steps
+        </p>
+        <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">
+          Track this match in your pipeline or generate interview questions grounded in this resume
+          and job.
+        </p>
+        {actionError && (
+          <p role="alert" className="mt-3 text-[13px] text-neg">
+            {actionError}
+          </p>
+        )}
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          {linkedApp ? (
+            <Link
+              href={`/dashboard/applications/${linkedApp.id}`}
+              className={cn(
+                'inline-flex items-center justify-center rounded-full border border-line px-5 py-2.5',
+                'text-sm font-medium text-ink transition-colors hover:bg-card',
+              )}
+            >
+              View application
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void onTrackApplication()}
+              disabled={trackPending || interviewPending}
+              className={cn(
+                'inline-flex items-center justify-center rounded-full bg-accent px-5 py-2.5',
+                'text-sm font-medium text-accent-foreground transition-all hover:brightness-105',
+                'disabled:pointer-events-none disabled:opacity-60',
+              )}
+            >
+              {trackPending ? 'Tracking…' : 'Track application'}
+            </button>
+          )}
+          {linkedInterview ? (
+            <Link
+              href={`/dashboard/interview/${linkedInterview.id}`}
+              className={cn(
+                'inline-flex items-center justify-center rounded-full border border-line px-5 py-2.5',
+                'text-sm font-medium text-ink transition-colors hover:bg-card',
+              )}
+            >
+              View interview set
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void onPrepInterview()}
+              disabled={trackPending || interviewPending}
+              className={cn(
+                'inline-flex items-center justify-center rounded-full border border-line px-5 py-2.5',
+                'text-sm font-medium text-ink transition-colors hover:bg-card',
+                'disabled:pointer-events-none disabled:opacity-60',
+              )}
+            >
+              {interviewPending ? 'Starting prep…' : 'Prep for interview'}
+            </button>
+          )}
+        </div>
+      </section>
 
       {analysis.errorMessage && (
         <p className="mt-6 rounded-lg border border-neg/25 bg-neg/[0.04] px-4 py-3 text-[13px] text-neg">

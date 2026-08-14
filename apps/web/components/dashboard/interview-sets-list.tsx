@@ -6,6 +6,7 @@ import {
   ApiError,
   listInterviewSets,
   listJobs,
+  mapApiError,
   type InterviewSetListItem,
   type JobListItem,
   type JobStatus,
@@ -59,7 +60,7 @@ export function InterviewSetsList() {
     } catch (err) {
       setSets(null)
       if (err instanceof ApiError) {
-        setError(err.message)
+        setError(mapApiError(err, 'load'))
       } else {
         setError('Could not load interview sets. Is the API running on :4000?')
       }
