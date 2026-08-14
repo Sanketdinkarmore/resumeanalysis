@@ -46,7 +46,7 @@ Keep this folder as the source of truth for what we built and what comes next.
 | Doc | Purpose | Status |
 |---|---|---|
 | [phase-7-devops.md](./phase-7-devops.md) | CI, Docker, Redis/BullMQ | **Done** (7.4 skipped) |
-| [phase-7-deploy.md](./phase-7-deploy.md) | VPS deploy, secrets, HTTPS, AWS map | **Done** |
+| [phase-7-deploy.md](./phase-7-deploy.md) | AWS EC2 + DuckDNS + Nginx + HTTPS | **Done** (live) |
 
 ## Product polish (completed)
 
