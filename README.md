@@ -266,15 +266,15 @@ Polish shipped: overview dashboard, parse UX, delete/archive, match→apply→in
 
 ## Screenshots
 
-Drop captures from the live demo into `docs/screenshots/`, then enable:
+From the live demo ([nextup-sanket.duckdns.org](https://nextup-sanket.duckdns.org)):
 
-```markdown
-| Login | Dashboard | Match |
-| :---: | :---: | :---: |
-| ![Login](./docs/screenshots/login.png) | ![Dashboard](./docs/screenshots/dashboard.png) | ![Match](./docs/screenshots/match.png) |
-```
+| Register | Overview |
+| :---: | :---: |
+| ![Register](./docs/screenshots/register.png) | ![Dashboard](./docs/screenshots/dashboard.png) |
 
-Suggested shots: login (Google button), overview, resume detail after parse, match score, interview set with coach guide.
+| Match score | Parsed resume |
+| :---: | :---: |
+| ![Match](./docs/screenshots/match.png) | ![Resume](./docs/screenshots/resume.png) |
 
 ---
 
