@@ -34,7 +34,7 @@ export function SectionFragmented() {
 
         <div
           ref={ref}
-          className="relative mx-auto mt-16 flex min-h-[340px] max-w-3xl flex-wrap items-center justify-center gap-3"
+          className="relative mx-auto mt-16 flex min-h-[340px] max-w-3xl flex-wrap items-center justify-center gap-3 overflow-hidden"
         >
           {OBJECTS.map((o, i) => {
             const Icon = o.icon

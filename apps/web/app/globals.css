@@ -85,9 +85,16 @@
   * {
     @apply border-border;
   }
+  /* Prevent mobile auto-zoom / horizontal shift when children briefly overflow (e.g. landing animations). */
+  html {
+    overflow-x: clip;
+    max-width: 100%;
+  }
   body {
     @apply bg-background text-foreground;
     font-feature-settings: 'ss01', 'cv01';
+    overflow-x: clip;
+    max-width: 100%;
   }
   ::selection {
     background: var(--accent);
