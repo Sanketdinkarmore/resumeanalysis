@@ -1,0 +1,55 @@
+name: CD
+
+# Deploy to EC2 after CI succeeds on main/master (push only — not PRs).
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main, master]
+
+concurrency:
+  group: cd-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy → EC2
+    runs-on: ubuntu-latest
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      (github.event.workflow_run.head_branch == 'main' ||
+       github.event.workflow_run.head_branch == 'master')
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: ${{ secrets.EC2_PORT != '' && secrets.EC2_PORT || 22 }}
+          script_stop: true
+          command_timeout: 45m
+          script: |
+            set -euo pipefail
+            DEPLOY_PATH="${{ secrets.EC2_DEPLOY_PATH }}"
+            if [ -z "$DEPLOY_PATH" ]; then
+              DEPLOY_PATH="$HOME/resumeanalysis"
+            fi
+            cd "$DEPLOY_PATH"
+
+            echo "==> git sync"
+            git fetch origin
+            BRANCH=$(git rev-parse --abbrev-ref HEAD)
+            # Discard local edits to tracked files (e.g. old compose tweaks).
+            # Untracked/ignored files like repo-root `.env` are kept.
+            git reset --hard "origin/$BRANCH"
+
+            echo "==> docker compose rebuild (profile app)"
+            docker compose --profile app up -d --build
+
+            echo "==> status"
+            docker compose --profile app ps
+            curl -sf "http://127.0.0.1:4000/health" | head -c 200 || true
+            echo
+            echo "==> deploy done at $(date -u +%Y-%m-%dT%H:%M:%SZ)"

@@ -97,6 +97,52 @@ docker logs jri-worker --tail 20
 - Worker: `Parse worker ready`  
 - `jri-worker` may show Docker **unhealthy** (healthcheck hits API `/health` on a process that doesn’t serve HTTP) — ignore if logs say ready  
 
+## Continuous deploy (GitHub Actions → EC2)
+
+After CI is green on a **push** to `main` / `master`, [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) SSHs into the box and runs `git pull` + `docker compose --profile app up -d --build`.
+
+### One-time GitHub secrets
+
+Repo → **Settings → Secrets and variables → Actions**:
+
+| Secret | Example | Notes |
+|---|---|---|
+| `EC2_HOST` | `3.x.x.x` or `nextup-sanket.duckdns.org` | Elastic IP or DuckDNS |
+| `EC2_USER` | `ubuntu` | SSH user |
+| `EC2_SSH_KEY` | full PEM private key | Include `-----BEGIN…-----` / `END` lines |
+| `EC2_PORT` | `22` | Optional (defaults to 22) |
+| `EC2_DEPLOY_PATH` | `/home/ubuntu/resumeanalysis` | Optional (defaults to `~/resumeanalysis`) |
+
+### Server prep for CD
+
+1. Clone stays at `EC2_DEPLOY_PATH`; `git pull` must work (public repo, or deploy key / credential helper).
+2. Repo-root `.env` on the server (not committed) so web builds with the public API URL:
+
+```bash
+# ~/resumeanalysis/.env  (on EC2 only) — see .env.example for all keys
+NEXT_PUBLIC_API_URL=https://nextup-sanket.duckdns.org/api
+CORS_ORIGIN=https://nextup-sanket.duckdns.org
+GOOGLE_REDIRECT_URI=https://nextup-sanket.duckdns.org/api/auth/google/callback
+JWT_ACCESS_SECRET=...
+JWT_REFRESH_SECRET=...
+INTERNAL_API_SECRET=...
+```
+
+Compose substitutes that into the web image build arg and into api/worker/ai for
+`CORS_ORIGIN`, `GOOGLE_REDIRECT_URI`, `JWT_*`, and `INTERNAL_API_SECRET`
+(see [`.env.example`](../.env.example)). **Do not** keep production secrets only as
+uncommitted edits to `docker-compose.yml` — `git pull` would wipe them.
+3. SSH key in GitHub secrets must match an entry in `~/.ssh/authorized_keys` for `EC2_USER`.
+4. Prefer a **deploy-only** SSH key (not your laptop PEM shared widely); restrict security group SSH if you can.
+
+### Manual fallback (same commands CD runs)
+
+```bash
+cd ~/resumeanalysis
+git pull
+docker compose --profile app up -d --build
+```
+
 ## Day-2 ops
 
 ```bash

@@ -1,6 +1,6 @@
 # Phase 5 — Interview Prep (FR-7.x)
 
-JD-grounded interview questions + on-demand answer outlines.
+JD-grounded interview questions (15 total: 5 TECHNICAL / 5 BEHAVIORAL / 5 PROJECT) + on-demand interview-coach answer guides.
 
 **Status:** Done (API + AI + frontend)
 
@@ -16,7 +16,7 @@ LLM cascade: Groq → Gemini → template questions
 Save InterviewQuestionSet + InterviewQuestion rows
 ```
 
-Answer outlines are **not** pre-generated (cost control). Request them per question:
+Answer guides are **not** pre-generated (cost control). Request them per question — each guide is a short coach outline (what they want, structure, talking points, follow-up tip) plus a full **Sample answer (say this)** the candidate can practice:
 
 ```
 POST …/questions/:questionId/answer-outline

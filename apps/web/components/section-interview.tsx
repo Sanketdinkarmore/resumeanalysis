@@ -32,7 +32,7 @@ export function SectionInterview() {
           </SectionHeading>
           <p className="mt-6 max-w-lg text-[15px] leading-relaxed text-ink-soft">
             Every question is generated from the actual job requirements — technical, behavioral
-            and project, each with a focused prep outline.
+            and project — 15 questions total (5 per section), each with a focused prep outline.
           </p>
         </Reveal>
 

@@ -15,6 +15,7 @@ Move from “works on my machine” to **repeatable builds**, **containerized se
 | **7.3** | Redis + BullMQ worker — async resume/job parse | **Done** |
 | **7.4** | Async match + interview generation | **Skipped** (already fast enough on the request path) |
 | **7.5** | Deploy docs | **Done** — [phase-7-deploy.md](./phase-7-deploy.md) |
+| **7.6** | CD (Actions → EC2 SSH) | **Done** — [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) |
 
 ## 7.1 — CI
 
@@ -122,6 +123,14 @@ Match scoring and interview generation stay on the API request path. They alread
 ## 7.5 — Deploy
 
 See **[phase-7-deploy.md](./phase-7-deploy.md)** — VPS + Compose (supported), HTTPS, secrets, Google OAuth, worker, AWS mapping.
+
+## 7.6 — CD
+
+Workflow: [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml)
+
+Runs only after **CI succeeds** on a **push** to `main` / `master` (`workflow_run`). SSHs to EC2 → `git pull` → `docker compose --profile app up -d --build`.
+
+Secrets and server prep: [phase-7-deploy.md — Continuous deploy](./phase-7-deploy.md#continuous-deploy-github-actions--ec2).
 
 ## Related docs
 

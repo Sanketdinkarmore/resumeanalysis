@@ -292,7 +292,7 @@ export function InterviewSetDetailView() {
                       {q.answerOutline ? (
                         <div className="mt-3 rounded-lg border border-line bg-card/60 px-3.5 py-3">
                           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint">
-                            Answer outline
+                            Interview coach guide
                           </p>
                           <p className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-ink-soft">
                             {q.answerOutline}
@@ -309,7 +309,7 @@ export function InterviewSetDetailView() {
                             'disabled:pointer-events-none disabled:opacity-50',
                           )}
                         >
-                          {pending ? 'Generating outline…' : 'Generate outline'}
+                          {pending ? 'Generating coach guide…' : 'Generate coach guide'}
                         </button>
                       )}
 
