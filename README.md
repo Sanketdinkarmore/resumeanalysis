@@ -57,17 +57,6 @@ Built as a production-minded monorepo: auth, validation, async workers, **CI + C
 
 ---
 
-## Resume bullets (portfolio)
-
-Use under a project title like **Nextup — Job & Resume Intelligence Platform**:
-
-- Built a full-stack career SaaS (Next.js, Express/Prisma, FastAPI) for resume parsing, JD matching, application tracking, and AI-assisted interview prep, with email/password and Google OAuth sign-in.
-- Designed async PDF/JD parsing with Redis + BullMQ so uploads return immediately while a background worker updates parse status and structured data without blocking the API.
-- Implemented deterministic resume–job match scoring with skill-gap recommendations, plus application pipeline stages and grounded interview prep (15 questions across technical/behavioral/project, coach guides + sample answers; Groq → Gemini → template fallback).
-- Shipped production on AWS EC2 with Docker Compose, Nginx, Let’s Encrypt, and DuckDNS (HTTPS + Google OAuth), plus GitHub Actions **CI/CD** (typecheck, tests, image builds, and SSH auto-deploy on green `main`).
-
----
-
 ## Product walkthrough
 
 ```text
