@@ -128,9 +128,11 @@ See **[phase-7-deploy.md](./phase-7-deploy.md)** — VPS + Compose (supported), 
 
 Workflow: [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml)
 
-Runs only after **CI succeeds** on a **push** to `main` / `master` (`workflow_run`). SSHs to EC2 → `git pull` → `docker compose --profile app up -d --build`.
+Runs only after **CI succeeds** on a **push** to `main` / `master` (`workflow_run`). SSHs to EC2 → `git reset --hard origin/<branch>` → `docker compose --profile app up -d --build` (repo-root `.env` on the server is preserved).
 
-Secrets and server prep: [phase-7-deploy.md — Continuous deploy](./phase-7-deploy.md#continuous-deploy-github-actions--ec2).
+**Full recreate commands** (EC2 console, `nano`, Nginx, Certbot, DuckDNS, secrets): [phase-7-deploy.md](./phase-7-deploy.md).
+
+Secrets and server prep summary: [phase-7-deploy.md — Part I](./phase-7-deploy.md#part-i--github-actions-ci--cd).
 
 ## Related docs
 

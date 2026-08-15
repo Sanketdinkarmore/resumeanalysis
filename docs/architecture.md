@@ -161,7 +161,9 @@ Soft-delete resumes so historical matches/applications remain coherent.
 | ai | 8000 | FastAPI |
 | web | 3000 | Next.js |
 
-Production swaps MinIO → S3, Compose services → EC2/RDS/ElastiCache as designed in Phase 8.
+Production today: **one EC2** running the full Compose stack behind Nginx + Let’s Encrypt + DuckDNS. MinIO stays on-box; optional later swap to RDS / ElastiCache / S3 — see [phase-7-deploy.md](./phase-7-deploy.md).
+
+**CI/CD:** GitHub Actions runs typecheck/tests/Docker builds on every push/PR; after green CI on `main`, CD SSHs to EC2 and rebuilds Compose (secrets stay in server `.env` files, not git).
 
 ---
 
@@ -171,15 +173,11 @@ Production swaps MinIO → S3, Compose services → EC2/RDS/ElastiCache as desig
 resumeanalysis/
 ├── apps/
 │   ├── web/                 # Next.js
-│   ├── api/                 # Express + Prisma
+│   ├── api/                 # Express + Prisma + BullMQ worker
 │   └── ai/                  # FastAPI
-├── packages/
-│   └── shared/              # shared types/constants (optional early)
-├── docs/
-│   ├── architecture.md      # this file
-│   └── PRD (or link)
-├── docker/                  # Dockerfiles, nginx conf later
-├── .github/workflows/       # CI later
+├── docs/                    # PRD, architecture, phase notes, EC2 deploy guide
+├── .github/workflows/       # ci.yml + deploy.yml
+├── .env.example             # repo-root prod keys (EC2 only)
 ├── docker-compose.yml
 ├── .gitignore
 └── README.md
@@ -208,7 +206,7 @@ resumeanalysis/
 | Local object storage | MinIO (S3 API) |
 | Queue | Redis + BullMQ on Node side |
 | AI provider | Deferred to Phase 7 (interface first; OpenAI-compatible client) |
-| Auth in v1 | Email/password only |
+| Auth in v1 | Email/password + Google OAuth |
 | Resume format v1 | PDF only |
 | Package manager | npm (Node already present) |
 | Python env | venv + `requirements.txt` (Poetry later if needed) |
@@ -222,3 +220,4 @@ resumeanalysis/
 - Why Express owns scoring: explainability, tests, reproducibility
 - Why async jobs: upload latency, retries, user-visible status
 - Why private S3 + signed URLs: resume data is PII
+- Why CI/CD on one EC2: portfolio-grade delivery without Kubernetes; secrets in server `.env`, not git
