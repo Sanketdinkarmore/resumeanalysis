@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { computeMatchScore, type ResumeEntities, type JdEntities } from "../lib/scoring.js";
 import { generateRecommendations } from "../lib/recommendations.js";
+import { generateBulletRewrite } from "../lib/aiClient.js";
 import { AppError } from "../middleware/errorHandler.js";
 import { requireAuth, type AuthedRequest } from "../middleware/requireAuth.js";
 import { createMatchAnalysisSchema } from "../validators/matchAnalysis.js";
@@ -185,6 +186,80 @@ matchAnalysesRouter.get("/:id", async (req, res, next) => {
     }
 
     res.json({ analysis });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /match-analyses/:id/rewrite-bullets — rewrite resume bullets to match the JD
+matchAnalysesRouter.post("/:id/rewrite-bullets", async (req, res, next) => {
+  try {
+    const userId = (req as unknown as AuthedRequest).user.sub;
+
+    const analysis = await prisma.matchAnalysis.findUnique({
+      where: { id: req.params.id },
+      select: { userId: true, resumeVersionId: true, jobDescriptionId: true },
+    });
+
+    if (!analysis || analysis.userId !== userId) {
+      next(new AppError(404, "NOT_FOUND", "Analysis not found"));
+      return;
+    }
+
+    const [resume, jd] = await Promise.all([
+      prisma.resumeVersion.findUnique({
+        where: { id: analysis.resumeVersionId },
+        select: { parsedData: true },
+      }),
+      prisma.jobDescription.findUnique({
+        where: { id: analysis.jobDescriptionId },
+        select: { roleTitle: true, parsedData: true },
+      }),
+    ]);
+
+    const parsedResume = resume?.parsedData as
+      | { experience?: unknown }
+      | null
+      | undefined;
+    const parsedJd = jd?.parsedData as
+      | {
+          requiredSkills?: unknown;
+          preferredSkills?: unknown;
+          keywords?: unknown;
+        }
+      | null
+      | undefined;
+
+    const experience = Array.isArray(parsedResume?.experience)
+      ? (parsedResume.experience as Array<{
+          title?: string;
+          company?: string;
+          bullets?: Array<{ text?: string } | string>;
+        }>)
+          .map((exp) => ({
+            title: exp.title,
+            company: exp.company,
+            bullets: (exp.bullets ?? [])
+              .map((b) => (typeof b === "string" ? b : b?.text))
+              .filter((t): t is string => Boolean(t?.trim())),
+          }))
+          .filter((exp) => exp.bullets.length > 0)
+      : [];
+
+    try {
+      const suggestions = await generateBulletRewrite({
+        roleTitle: jd?.roleTitle ?? "the role",
+        requiredSkills: toStringArray(parsedJd?.requiredSkills),
+        preferredSkills: toStringArray(parsedJd?.preferredSkills),
+        keywords: toStringArray(parsedJd?.keywords),
+        experience,
+      });
+      res.json({ suggestions });
+    } catch (genErr) {
+      const message =
+        genErr instanceof Error ? genErr.message : "Bullet rewrite generation failed";
+      next(new AppError(502, "GENERATION_FAILED", message));
+    }
   } catch (err) {
     next(err);
   }

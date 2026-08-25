@@ -34,6 +34,15 @@ export interface GeneratedInterviewQuestion {
   prompt: string;
 }
 
+export interface BulletRewriteSuggestion {
+  experienceIndex: number;
+  bulletIndex: number;
+  original: string;
+  suggested: string;
+  impactMissing: boolean;
+  focusSkill: string;
+}
+
 /** Send PDF to FastAPI for text extraction + heuristic structuring. */
 export async function parseResumePdf(
   buffer: Buffer,
@@ -131,4 +140,34 @@ export async function generateAnswerOutline(input: {
 
   const data = (await res.json()) as { answerOutline: string };
   return data.answerOutline;
+}
+
+/** Rewrite resume experience bullets to match a JD via FastAPI. */
+export async function generateBulletRewrite(input: {
+  roleTitle: string;
+  requiredSkills: string[];
+  preferredSkills: string[];
+  keywords: string[];
+  experience: Array<{
+    title?: string;
+    company?: string;
+    bullets: string[];
+  }>;
+}): Promise<BulletRewriteSuggestion[]> {
+  const res = await fetch(`${env.AI_SERVICE_URL}/improve/bullets`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Internal-Secret": env.INTERNAL_API_SECRET,
+    },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Bullet rewrite failed (${res.status}): ${body}`);
+  }
+
+  const data = (await res.json()) as { suggestions: BulletRewriteSuggestion[] };
+  return data.suggestions;
 }

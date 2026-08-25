@@ -2,7 +2,7 @@
 
 Internal Python service for parsing and LLM features. The browser never calls this — only Express does.
 
-**Status:** Done (scaffold + parse + interview LLM cascade)
+**Status:** Done (scaffold + parse + interview LLM cascade + bullet rewrite)
 
 ## Do I need API keys?
 
@@ -12,6 +12,7 @@ Internal Python service for parsing and LLM features. The browser never calls th
 | Resume PDF parse | Heuristic (PyMuPDF) | + LLM enrich (better) |
 | JD parse | Heuristic | + LLM enrich (better) |
 | Interview questions / outlines | Template fallback | Groq → Gemini (preferred) |
+| Bullet rewrite | Heuristic rewrite | Groq → Gemini (preferred) |
 
 Keys live in `apps/ai/.env` (never commit):
 
@@ -37,11 +38,13 @@ apps/ai/
       health.py
       parse.py
       interview.py
+      improve.py
     services/
       resume_parser.py
       jd_parser.py
       llm_enrich.py
       interview.py
+      bullet_rewrite.py
       llm_client.py      # Groq → Gemini
       groq_client.py
       gemini_client.py
@@ -92,6 +95,7 @@ Example health:
 Used by:
 
 - Interview questions + answer outlines  
+- Bullet rewrite (`bullet_rewrite.py`)  
 - Resume/JD enrichment (`llm_enrich.py`)
 
 ## Internal routes
@@ -103,6 +107,7 @@ Used by:
 | POST | `/parse/job-description` | `{ rawText }` → skills/keywords |
 | POST | `/interview/questions` | JD (+ optional resume) → questions |
 | POST | `/interview/answer-outline` | One question → outline |
+| POST | `/improve/bullets` | Resume experience + JD skills/keywords → bullet rewrites |
 
 All non-health routes require header `X-Internal-Secret`.
 

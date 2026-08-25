@@ -1,5 +1,5 @@
 import { apiRequest } from '@/lib/api/client'
-import type { MatchAnalysis, MatchListItem } from '@/lib/api/match-types'
+import type { BulletRewriteSuggestion, MatchAnalysis, MatchListItem } from '@/lib/api/match-types'
 
 export type CreateMatchInput = {
   resumeVersionId: string
@@ -25,4 +25,14 @@ export async function createMatch(input: CreateMatchInput): Promise<MatchAnalysi
     },
   })
   return data.analysis
+}
+
+export async function rewriteMatchBullets(
+  matchId: string,
+): Promise<BulletRewriteSuggestion[]> {
+  const data = await apiRequest<{ suggestions: BulletRewriteSuggestion[] }>(
+    `/match-analyses/${matchId}/rewrite-bullets`,
+    { method: 'POST' },
+  )
+  return data.suggestions
 }

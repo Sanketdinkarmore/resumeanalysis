@@ -13,7 +13,9 @@ import {
   listApplications,
   listInterviewSets,
   mapApiError,
+  rewriteMatchBullets,
   type ApplicationListItem,
+  type BulletRewriteSuggestion,
   type InterviewSetListItem,
   type JobDetail,
   type MatchAnalysis,
@@ -88,6 +90,11 @@ export function MatchDetailView() {
   const [loading, setLoading] = useState(true)
   const [trackPending, setTrackPending] = useState(false)
   const [interviewPending, setInterviewPending] = useState(false)
+  const [rewriteSuggestions, setRewriteSuggestions] = useState<BulletRewriteSuggestion[] | null>(null)
+  const [rewritePending, setRewritePending] = useState(false)
+  const [rewriteError, setRewriteError] = useState<string | null>(null)
+  const [acceptedRewrites, setAcceptedRewrites] = useState<Set<string>>(new Set())
+  const [rejectedRewrites, setRejectedRewrites] = useState<Set<string>>(new Set())
 
   const load = useCallback(async () => {
     if (!id) return
@@ -178,6 +185,43 @@ export function MatchDetailView() {
     } finally {
       setInterviewPending(false)
     }
+  }
+
+  async function onRewriteBullets() {
+    if (!analysis) return
+    setRewriteError(null)
+    setRewritePending(true)
+    setRewriteSuggestions(null)
+    try {
+      const suggestions = await rewriteMatchBullets(analysis.id)
+      setRewriteSuggestions(suggestions)
+      setAcceptedRewrites(new Set())
+      setRejectedRewrites(new Set())
+    } catch (err) {
+      setRewriteError(mapApiError(err, 'match'))
+    } finally {
+      setRewritePending(false)
+    }
+  }
+
+  function acceptRewrite(s: BulletRewriteSuggestion) {
+    const key = `${s.experienceIndex}-${s.bulletIndex}`
+    setAcceptedRewrites((prev) => new Set(prev).add(key))
+    setRejectedRewrites((prev) => {
+      const next = new Set(prev)
+      next.delete(key)
+      return next
+    })
+  }
+
+  function rejectRewrite(s: BulletRewriteSuggestion) {
+    const key = `${s.experienceIndex}-${s.bulletIndex}`
+    setRejectedRewrites((prev) => new Set(prev).add(key))
+    setAcceptedRewrites((prev) => {
+      const next = new Set(prev)
+      next.delete(key)
+      return next
+    })
   }
 
   if (loading) {
@@ -345,6 +389,115 @@ export function MatchDetailView() {
       <SkillPills label="Matched skills" items={matched} tone="pos" />
       <SkillPills label="Missing required" items={missingMust} tone="neg" />
       <SkillPills label="Missing preferred" items={missingPref} tone="default" />
+
+      <section className="mt-10 rounded-xl border border-line bg-card/60 p-5 sm:p-6">
+        <p className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-ink-faint">
+          Rewrite bullets for this role
+        </p>
+        <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-ink-soft">
+          Suggest tighter bullets that surface the skills and keywords this job asks for — without
+          inventing numbers. Review each one and accept or reject it.
+        </p>
+        {rewriteError && (
+          <p role="alert" className="mt-3 text-[13px] text-neg">
+            {rewriteError}
+          </p>
+        )}
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => void onRewriteBullets()}
+            disabled={rewritePending}
+            className={cn(
+              'inline-flex items-center justify-center rounded-full border border-line px-5 py-2.5',
+              'text-sm font-medium text-ink transition-colors hover:bg-card',
+              'disabled:pointer-events-none disabled:opacity-60',
+            )}
+          >
+            {rewritePending ? 'Rewriting…' : 'Generate bullet suggestions'}
+          </button>
+        </div>
+
+        {rewriteSuggestions && rewriteSuggestions.length > 0 && (
+          <ul className="mt-5 flex flex-col gap-3">
+            {rewriteSuggestions.map((s) => {
+              const key = `${s.experienceIndex}-${s.bulletIndex}`
+              const accepted = acceptedRewrites.has(key)
+              const rejected = rejectedRewrites.has(key)
+              return (
+                <li
+                  key={key}
+                  className={cn(
+                    'rounded-lg border p-4',
+                    accepted
+                      ? 'border-pos/30 bg-pos/[0.04]'
+                      : rejected
+                        ? 'border-line bg-paper/50 opacity-70'
+                        : 'border-line bg-paper/50',
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-md border border-accent/30 bg-accent/10 px-2 py-1 font-mono text-[10px] text-accent">
+                      {s.focusSkill}
+                    </span>
+                    {s.impactMissing && (
+                      <span className="rounded-md border border-line bg-card px-2 py-1 font-mono text-[10px] text-ink-soft">
+                        add real impact
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-3 rounded-md border border-neg/25 bg-neg/[0.04] px-3 py-2">
+                    <p className="font-mono text-[10px] uppercase tracking-wider text-ink-faint">
+                      Before
+                    </p>
+                    <p className="mt-1 text-[13px] leading-relaxed text-ink line-through decoration-neg/40">
+                      {s.original}
+                    </p>
+                  </div>
+                  <div className="mt-2 rounded-md border border-pos/25 bg-pos/[0.04] px-3 py-2">
+                    <p className="font-mono text-[10px] uppercase tracking-wider text-ink-faint">
+                      Suggested
+                    </p>
+                    <p className="mt-1 text-[13px] leading-relaxed text-ink">{s.suggested}</p>
+                  </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    {accepted ? (
+                      <span className="font-mono text-[11px] text-pos">Accepted</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => acceptRewrite(s)}
+                        disabled={rejected}
+                        className="rounded-md bg-pos px-3.5 py-1.5 font-mono text-[11px] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+                      >
+                        Accept
+                      </button>
+                    )}
+                    {rejected ? (
+                      <span className="font-mono text-[11px] text-ink-faint">Rejected</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => rejectRewrite(s)}
+                        disabled={accepted}
+                        className="rounded-md border border-line bg-paper px-3.5 py-1.5 font-mono text-[11px] text-ink-faint transition-colors hover:text-neg disabled:opacity-40"
+                      >
+                        Reject
+                      </button>
+                    )}
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+
+        {rewriteSuggestions && rewriteSuggestions.length === 0 && (
+          <p className="mt-4 text-[13px] text-ink-soft">
+            No bullet suggestions — your experience already reads well against this role.
+          </p>
+        )}
+      </section>
 
       <section className="mt-8">
         <p className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-ink-faint">

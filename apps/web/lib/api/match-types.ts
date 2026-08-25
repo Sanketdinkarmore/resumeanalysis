@@ -18,6 +18,15 @@ export type MatchRecommendation = {
   evidence: Record<string, unknown> | null
 }
 
+export type BulletRewriteSuggestion = {
+  experienceIndex: number
+  bulletIndex: number
+  original: string
+  suggested: string
+  impactMissing: boolean
+  focusSkill: string
+}
+
 export type MatchListItem = {
   id: string
   resumeVersionId: string

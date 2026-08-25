@@ -7,6 +7,7 @@ export {
   listMatches,
   getMatch,
   createMatch,
+  rewriteMatchBullets,
   type CreateMatchInput,
 } from '@/lib/api/matches'
 export {
@@ -37,6 +38,7 @@ export type {
   MatchListItem,
   MatchAnalysis,
   MatchRecommendation,
+  BulletRewriteSuggestion,
   RecommendationType,
   RecommendationSeverity,
 } from '@/lib/api/match-types'
