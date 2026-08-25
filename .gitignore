@@ -13,6 +13,7 @@ build/
 out/
 coverage/
 *.tsbuildinfo
+.superbrain
 
 # Env & secrets — never commit real keys
 .env
