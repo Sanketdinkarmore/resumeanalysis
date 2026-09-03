@@ -110,7 +110,7 @@ export function InterviewGenerateForm({ onCreated }: { onCreated?: () => void })
       <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">
         Create questions for a job. Optionally ground them in a resume or an application
         (uses that application&apos;s resume). Linking an application regenerates/replaces any
-        previous set for it. Needs the AI service (Groq preferred).
+        previous set for it.
       </p>
 
       {loadingOptions && (
